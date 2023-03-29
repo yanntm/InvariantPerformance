@@ -84,9 +84,19 @@ memreal2 <- ggplot(fperf,
 #perf$deltatime<-perf$duration.ms._vA-perf$duration.ms._vB
 #perf$deltatest<-perf$Test.fin_vA-perf$Test.fin_vB
 
+svg("time.svg")
+print(timereal2)
+dev.off()
+
+svg("mem.svg")
+print(memreal2)
+dev.off()
+
+
 pdf(file = "fplots.pdf")    #paper = "a4r"
 # print(timereal)
 print(timereal2)
 print(memreal2)
 dev.off()
+
 
