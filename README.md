@@ -2,7 +2,7 @@
 
 This repository contains scripts and logs of experiments on computation of Petri net invariants using ITS-Tools and Tina.
 
-This experiment compares the performance of these two tools over the set of models taken from the Model-Checking Contest (2022 edition).
+This experiment compares the performance of these two tools over the set of models taken from the Model-Checking Contest (2022 edition) http://mcc.lip6.fr.
 
 # Running the experiment
 
@@ -19,7 +19,7 @@ In these commands,
 * `~/Downloads/TEST/INPUTS/*/` corresponds to all models of the MCC 2022, extracted from our https://github.com/yanntm/pnmcc-models-2022 repository
 * `timeout.pl` is a small utility to force a timeout, available from https://github.com/yanntm/MCC-drivers/blob/master/bin/timeout.pl
 * `systemd-run` is some cgroups mantra to enforce a memory limit at 16GB
-* `struct` is the Tina utility downloaded from , in version 3.7.0. Note that we also installed `4ti2`
+* `struct` is the Tina utility downloaded from https://projects.laas.fr/tina/download.php, in version 3.7.0. Note that we also installed `4ti2`
 * `its-tools` is the ITS-Tools command line version, available from https://github.com/yanntm/ITS-Tools-MCC We used version 
 * Logs are produced in *.its and *.struct files; these commands can be rerun if some issue happened and some logs are missing.
 
@@ -46,8 +46,13 @@ We then ran the perl script `logs2csv.pl` to extract from these logs one line pe
 
 The resulting `invar.csv` file is part of this repository.
 
-Finally to produce some visualisation, we used the script `compareForm.R`, this produces the `fplots.pdf` file.
+Finally to produce some visualisation, we used the script `compareForm.R`, this produces the `fplots.pdf` file and `mem.svg` `time.svg`.
+
+[mem.svg]
+[time.svg]
+
 We use as time measurement the sum of reported times to compute P and T flows by both tools; while elapsed time
  measured externally is also interesting it is polluted by JVM startup time (around 700 ms) and the fact that ITS-Tools actually
  prints the invariants (with some intense I/O) when Tina simply prints the number of invariants computed.
 
+We also filter COL models at this stage, it seems that Tina is computing the invariants of the skeleton of the net when provided a COL model, whereas ITS-Tools actually unfolds the model and reports invariants on it's unfolding, so that the results on COL models are incomparable.
