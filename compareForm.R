@@ -64,6 +64,22 @@ timereal2 <- ggplot(fperf,
   ggtitle("Run time in mseconds for computing PFlow+TFlow as reported by tools")
 
 
+memreal2 <- ggplot(fperf, 
+                    aes(x=Mem_its, y=Mem_tina, color=verdict.color)) + 
+  geom_point() + 
+  scale_y_continuous(trans='log10', labels = function(x) format(x, scientific = FALSE)) +
+  scale_x_continuous(trans='log10', labels = function(x) format(x, scientific = FALSE))  + 
+  geom_abline(intercept = 0, slope = 1)  + 
+  scale_color_manual(values = c("orange", "blue","black")) +
+  scale_fill_hue(l=45) +
+  #  annotate("text", x=1200, y=10, label= nrow(subset(perf, Test.fin_vA < Test.fin_vB))) + 
+  #  annotate("text", x=10, y=1200, label= nrow(subset(perf, Test.fin_vA > Test.fin_vB))) + 
+  guides(color=guide_legend(element_blank())) +  
+  theme(legend.position = c(0.92, 0.05)) +
+  xlab("Mem (in KB.) for ITS") +
+  ylab("Mem (in KB.) for Tina") +
+  ggtitle("Resident shared size in KB for computing PFlow+TFlow as reported by time command")
+
 
 #perf$deltatime<-perf$duration.ms._vA-perf$duration.ms._vB
 #perf$deltatest<-perf$Test.fin_vA-perf$Test.fin_vB
@@ -71,5 +87,6 @@ timereal2 <- ggplot(fperf,
 pdf(file = "fplots.pdf")    #paper = "a4r"
 # print(timereal)
 print(timereal2)
+print(memreal2)
 dev.off()
 

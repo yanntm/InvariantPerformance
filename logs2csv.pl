@@ -53,10 +53,10 @@ foreach my $file (@files) {
 		next;
 	    } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
 		$timecmd=$1;
+		$tmem=$2;
 		if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
 		    $timecmd = 60000*$1 + $2*1000 + $3;
 		}
-		$tmem=$2;
 	    }
 	}	
 	close IN;
@@ -115,10 +115,10 @@ foreach my $file (@files) {
 		next;
 	    } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
 		$timecmd=$1;
+		$tmem=$2;
 		if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
 		    $timecmd = 60000*$1 + $2*1000 + $3;
 		}
-		$tmem=$2;
 	    } else {
 	#	print "nomatch: $line\n";
 	    }
