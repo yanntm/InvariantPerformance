@@ -4,6 +4,10 @@ This repository contains scripts and logs of experiments on computation of Petri
 
 This experiment compares the performance of these two tools over the set of models taken from the Model-Checking Contest (2022 edition) http://mcc.lip6.fr.
 
+![Time](./time.svg)
+
+![Memory](./mem.svg)
+
 # Running the experiment
 
 We used the following shell commands to build the raw logs:
@@ -47,9 +51,6 @@ We then ran the perl script `logs2csv.pl` to extract from these logs one line pe
 The resulting `invar.csv` file is part of this repository.
 
 Finally to produce some visualisation, we used the script `compareForm.R`, this produces the `fplots.pdf` file and `mem.svg` `time.svg`.
-
-[mem.svg]
-[time.svg]
 
 We use as time measurement the sum of reported times to compute P and T flows by both tools; while elapsed time
  measured externally is also interesting it is polluted by JVM startup time (around 700 ms) and the fact that ITS-Tools actually
