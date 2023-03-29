@@ -23,7 +23,10 @@ In these commands,
 * `its-tools` is the ITS-Tools command line version, available from https://github.com/yanntm/ITS-Tools-MCC We used version 
 * Logs are produced in *.its and *.struct files; these commands can be rerun if some issue happened and some logs are missing.
 
-These commands produce the raw logs, contained in `rawlogs.tgz` of this repository.
+These commands produce the raw logs.
+Before zipping them into `rawlogs.tgz` of this repository, we first remove the actual invariants from the output as the archived logs are otherwise over 250MB.
+We ran the following sed line :`sed -i '/inv :.*/d' *.its`.
+The flag `-q` we use for Tina means "quiet" and avoids printing the actual invariants, but ITS-Tools does not have such a flag.
 
 We then ran the perl script `logs2csv.pl` to extract from these logs one line per log that provides the following columns :
 * Model the name of the model
@@ -36,11 +39,15 @@ We then ran the perl script `logs2csv.pl` to extract from these logs one line pe
 * ConstP the number of constant places reported by ITS-tools (always 0 in Tina runs). These constant places are simplified away in ITS-Tools so they do not produce trivial flows with a single entry like with Tina. 
 * NBP the number of P flows reported
 * NBT the number of T flows reported
-* TotalTime total runtime in ms as reported by ITS-Tools at end of run; this is measured within the application, hence it does not include JVM startup time.
-* Time is the total elapsed time as reported by the `time` command
+* TotalTime total runtime in ms as reported by ITS-Tools at end of run; this is measured within the application, hence it does not include JVM startup time. Value is 0 for Tina.
+* Time is the total elapsed time as reported by the `time` command converted to milliseconds (or 120 seconds if some error occurred)
 * Mem is the value reported by time in the `maxresident` field, it estimates memory usage in KB.
 * Status is OK if the run finished normally, TO if we timed out, MOVF if there was a memory overflow, ERR if an error was detected
 
 The resulting `invar.csv` file is part of this repository.
 
 Finally to produce some visualisation, we used the script `compareForm.R`, this produces the `fplots.pdf` file.
+We use as time measurement the sum of reported times to compute P and T flows by both tools; while elapsed time
+ measured externally is also interesting it is polluted by JVM startup time (around 700 ms) and the fact that ITS-Tools actually
+ prints the invariants (with some intense I/O) when Tina simply prints the number of invariants computed.
+
