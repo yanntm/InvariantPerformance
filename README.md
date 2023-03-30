@@ -24,7 +24,7 @@ In these commands,
 * `timeout.pl` is a small utility to force a timeout, available from https://github.com/yanntm/MCC-drivers/blob/master/bin/timeout.pl
 * `systemd-run` is some cgroups mantra to enforce a memory limit at 16GB
 * `struct` is the Tina utility downloaded from https://projects.laas.fr/tina/download.php, in version 3.7.0. Note that we also installed `4ti2`
-* `its-tools` is the ITS-Tools command line version, available from https://github.com/yanntm/ITS-Tools-MCC We used version 
+* `its-tools` is the ITS-Tools command line version, available from https://github.com/yanntm/ITS-Tools-MCC We used version 202303281143.
 * Logs are produced in *.its and *.struct files; these commands can be rerun if some issue happened and some logs are missing.
 
 These commands produce the raw logs.
