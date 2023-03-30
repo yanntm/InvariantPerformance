@@ -20,7 +20,7 @@ for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i | cut -d '/' -f 7) ;  i
 
 We apologize for the hard coded paths, but they can be easily adapted.
 In these commands,
-* `~/Downloads/TEST/INPUTS/*/` corresponds to all models of the MCC 2022, extracted from our https://github.com/yanntm/pnmcc-models-2022 repository
+* `~/Downloads/TEST/INPUTS/*/` corresponds to all models of the MCC 2022, extracted from our https://github.com/yanntm/pnmcc-models-2022 repository. We dropped 4 models with respect to 2022 MCC : StigmergyCommit-PT-11b, TokenRing-PT-040, TokenRing-PT-050 which are all too big to be stored on GitHub (over 100MB compressed) and GPPP-PT-C0010N1000000000 whose initial marking overflows from 32 bit integers and both tools fail immediately. 
 * `timeout.pl` is a small utility to force a timeout, available from https://github.com/yanntm/MCC-drivers/blob/master/bin/timeout.pl
 * `systemd-run` is some cgroups mantra to enforce a memory limit at 16GB
 * `struct` is the Tina utility downloaded from https://projects.laas.fr/tina/download.php, in version 3.7.0. Note that we also installed `4ti2`
