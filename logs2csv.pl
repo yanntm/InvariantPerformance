@@ -73,6 +73,68 @@ foreach my $file (@files) {
 	#print "looking at file : $file";
 	my $model=$file;
 	$model =~ s/\.struct//g ;
+	my $tool="tina4ti2";
+	my $status="UNK";
+	my $ptime=-1, my $ttime=-1, my $constp=0, my $nbp=-1, my $nbt=-1, my $tottime=-1, my $tmem=-1;
+	my $timecmd=-1;
+	my $colp=-1,my $colt=-1;
+	my $cardp=-1,my $cardt=-1,my$carda=-1;
+	open IN, "< $file";
+	while (my $line=<IN>) {
+	    chomp $line;
+	    if ($line =~ /(\d+) places, (\d+) transitions, (\d+) arcs/) {
+		$cardp=$1;
+		$cardt=$2;
+		$carda=$3;
+		# $parsetime=$4;
+	    } elsif ($line =~ /(\d+) flow\(s\)/) {
+		if ($nbp == -1) {
+		    $nbp=$1;
+		} else {
+		    $nbt=$1;
+		}
+	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
+		if ($nbp == -1) {
+		    next;
+		} elsif ($nbp != -1 && $nbt == -1) {
+		    $ptime=$1*1000.0;
+		} elsif ($nbp != -1 && $nbt != -1) {
+		    $ttime=$1*1000.0;
+		    $status="OK";
+		}
+		next;
+	    } elsif ($line =~ /TIME LIMIT/) {
+		$timecmd=120000;
+		$status="TO";
+		next;
+	    } elsif ($line =~ /Command terminated by signal 9/) {
+		$status="MOVF";
+		next;
+	    } elsif ($line =~ /Command exited with non-zero status/) {
+		$status="MOVF";
+		next;
+	    } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
+		$timecmd=$1;
+		$tmem=$2;
+		if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
+		    $timecmd = 60000*$1 + $2*1000 + $3;
+		}
+	    } else {
+	#	print "nomatch: $line\n";
+	    }
+	}	
+	close IN;
+	print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
+    }
+}   
+
+@files = <*tina>;
+#print "working on files : @files";
+foreach my $file (@files) {
+    if ( $file =~ /\.tina$/ ) {	
+	#print "looking at file : $file";
+	my $model=$file;
+	$model =~ s/\.tina//g ;
 	my $tool="tina";
 	my $status="UNK";
 	my $ptime=-1, my $ttime=-1, my $constp=0, my $nbp=-1, my $nbt=-1, my $tottime=-1, my $tmem=-1;
@@ -97,9 +159,9 @@ foreach my $file (@files) {
 		if ($nbp == -1) {
 		    next;
 		} elsif ($nbp != -1 && $nbt == -1) {
-		    $ptime=$1*1000;
+		    $ptime=$1*1000.0;
 		} elsif ($nbp != -1 && $nbt != -1) {
-		    $ttime=$1*1000;
+		    $ttime=$1*1000.0;
 		    $status="OK";
 		}
 		next;
@@ -111,7 +173,7 @@ foreach my $file (@files) {
 		$status="MOVF";
 		next;
 	    } elsif ($line =~ /Command exited with non-zero status/) {
-		$status="ERR";
+		$status="MOVF";
 		next;
 	    } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
 		$timecmd=$1;
@@ -124,7 +186,7 @@ foreach my $file (@files) {
 	    }
 	}	
 	close IN;
-	print "$model,tina,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
+	print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }
 }   
 
