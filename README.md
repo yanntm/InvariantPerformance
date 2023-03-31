@@ -8,14 +8,24 @@ This experiment compares the performance of these two tools over the set of mode
 
 ![Memory](./mem.svg)
 
+Overall results :
+* 1384 total models evaluated
+* ITS-Tools solved 1374 and timed out (>120 seconds) in 10 cases
+* Tina with 4ti2 solved 1215, timed out (>120 seconds) in 157 cases and produced a memory overflow (>16 GB) in 8 cases.
+* Tina without 4ti2 solved 948, timed out (>120 seconds) in 289 cases and produced a memory overflow (>16 GB) in 146 cases.
+
+Due to Tina with 4ti2 outprforming Tina, we simply compare ITS-Tools to Tina with 4ti2 in the plots.
+
 # Running the experiment
 
 We used the following shell commands to build the raw logs:
 
 ```
-for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i | cut -d '/' -f 7) ;  if [ ! -f $model.struct ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user  ./struct -4ti2 -F -q $i/model.pnml > $model.struct 2>&1 ; fi ;  done
+for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i |  awk -F/ '{print $NF}') ;  if [ ! -f $model.struct ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user  ./struct -4ti2 -F -q $i/model.pnml > $model.struct 2>&1 ; fi ;  done
 
-for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i | cut -d '/' -f 7) ;  if [ ! -f $model.its ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/itstools/itstools/its-tools -pnfolder $i --Pflows --Tflows  > $model.its 2>&1 ; fi ;  done
+for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i | awk -F/ '{print $NF}') ;  if [ ! -f $model.its ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/itstools/itstools/its-tools -pnfolder $i --Pflows --Tflows  > $model.its 2>&1 ; fi ;  done
+
+for i in ~/Downloads/TEST/INPUTS/*PT*/ ; do model=$(echo $i | awk -F/ '{print $NF}') ;  if [ ! -f $model.tina ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user  ./struct -F -q $i/model.pnml > $model.tina 2>&1 ; fi ;  done
 ```
 
 We apologize for the hard coded paths, but they can be easily adapted.
@@ -25,7 +35,7 @@ In these commands,
 * `systemd-run` is some cgroups mantra to enforce a memory limit at 16GB
 * `struct` is the Tina utility downloaded from https://projects.laas.fr/tina/download.php, in version 3.7.0. Note that we also installed `4ti2`
 * `its-tools` is the ITS-Tools command line version, available from https://github.com/yanntm/ITS-Tools-MCC We used version 202303281143.
-* Logs are produced in *.its and *.struct files; these commands can be rerun if some issue happened and some logs are missing.
+* Logs are produced in *.its and *.tina and *.struct files; these commands can be rerun if some issue happened and some logs are missing.
 
 These commands produce the raw logs.
 Before zipping them into `rawlogs.tgz` of this repository, we first remove the actual invariants from the output as the archived logs are otherwise over 250MB.
@@ -34,7 +44,7 @@ The flag `-q` we use for Tina means "quiet" and avoids printing the actual invar
 
 We then ran the perl script `logs2csv.pl` to extract from these logs one line per log that provides the following columns :
 * Model the name of the model
-* Tool the tool, its or tina
+* Tool the tool, its, tina4ti2 or tina
 * CardP the number of places in the net
 * CardT the number of transitions in the net
 * CardA the number of arcs in the net
@@ -57,3 +67,4 @@ We use as time measurement the sum of reported times to compute P and T flows by
  prints the invariants (with some intense I/O) when Tina simply prints the number of invariants computed.
 
 We also filter COL models at this stage, it seems that Tina is computing the invariants of the skeleton of the net when provided a COL model, whereas ITS-Tools actually unfolds the model and reports invariants on it's unfolding, so that the results on COL models are incomparable.
+
