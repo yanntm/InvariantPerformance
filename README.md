@@ -4,9 +4,9 @@ This repository contains scripts and logs of experiments on computation of Petri
 
 This experiment compares the performance of these two tools over the set of models taken from the Model-Checking Contest (2022 edition) http://mcc.lip6.fr.
 
-![Time](./time.svg)
+![Time](./time.svg?)
 
-![Memory](./mem.svg)
+![Memory](./mem.svg?)
 
 Overall results :
 * 1384 total models evaluated
