@@ -20,6 +20,7 @@ foreach my $file (@files) {
 	my $colp=-1,my $colt=-1;
 	my $cardp=-1,my $cardt=-1,my$carda=-1;
 	open IN, "< $file";
+	my $ofp=0, my $oft=0;
 	while (my $line=<IN>) {
 	    chomp $line;
 	    if ($line =~ /Reduce places removed (\d+) places/) {
@@ -33,6 +34,12 @@ foreach my $file (@files) {
 		$nbt=$1;
 		$ttime=$2;
 		next;
+	    } elsif ($line =~ /Invariants computation overflowed/) {
+		if ($ptime == -1) {
+		    $ofp=1;
+		} else {
+		    $oft=1;
+		}
 	    } elsif ($line =~ /Parsed PT model containing (\d+) places and (\d+) transitions and (\d+) arcs in (\d+) ms/) {
 		$cardp=$1;
 		$cardt=$2;
@@ -58,7 +65,13 @@ foreach my $file (@files) {
 		    $timecmd = 60000*$1 + $2*1000 + $3;
 		}
 	    }
-	}	
+	}
+	if ($ofp==1) {
+	    $status .= "_OF";	    
+	}
+	if ($oft==1) {
+	    $status .= "_OF";
+	}
 	close IN;
 	print "$model,itstools,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }
@@ -80,6 +93,7 @@ foreach my $file (@files) {
 	my $colp=-1,my $colt=-1;
 	my $cardp=-1,my $cardt=-1,my$carda=-1;
 	open IN, "< $file";
+	my $of=0;
 	while (my $line=<IN>) {
 	    chomp $line;
 	    if ($line =~ /(\d+) places, (\d+) transitions, (\d+) arcs/) {
@@ -103,6 +117,10 @@ foreach my $file (@files) {
 		    $status="OK";
 		}
 		next;
+	    } elsif ($line =~ /overflow/) {
+		# probably this :
+		# unexpected failure (overflow ?), please retry with flag -mp
+		$of = 1;
 	    } elsif ($line =~ /TIME LIMIT/) {
 		$timecmd=120000;
 		$status="TO";
@@ -122,7 +140,10 @@ foreach my $file (@files) {
 	    } else {
 	#	print "nomatch: $line\n";
 	    }
-	}	
+	}
+	if ($of==1) {
+	    $status .= "_OF";
+	}
 	close IN;
 	print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }
@@ -142,6 +163,7 @@ foreach my $file (@files) {
 	my $colp=-1,my $colt=-1;
 	my $cardp=-1,my $cardt=-1,my$carda=-1;
 	open IN, "< $file";
+	my $of=0;
 	while (my $line=<IN>) {
 	    chomp $line;
 	    if ($line =~ /(\d+) places, (\d+) transitions, (\d+) arcs/) {
@@ -172,6 +194,10 @@ foreach my $file (@files) {
 	    } elsif ($line =~ /Command terminated by signal 9/) {
 		$status="MOVF";
 		next;
+	    } elsif ($line =~ /overflow/) {
+		# probably this :
+		# unexpected failure (overflow ?), please retry with flag -mp
+		$of = 1;
 	    } elsif ($line =~ /Command exited with non-zero status/) {
 		$status="MOVF";
 		next;
@@ -184,7 +210,10 @@ foreach my $file (@files) {
 	    } else {
 	#	print "nomatch: $line\n";
 	    }
-	}	
+	}
+	if ($of==1) {
+	    $status .= "_OF";
+	}
 	close IN;
 	print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }

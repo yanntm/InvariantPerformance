@@ -7,8 +7,8 @@ library(ggbeeswarm,lib='~/usr/localR/library')
 data <- read.csv(file = "invar.csv",  dec = ".", sep = ",",  header = TRUE, stringsAsFactors = FALSE)
 
 fvA <- subset(data, Tool=="itstools")
-#fvB <- subset(data, Tool=="tina4ti2")
-fvB <- subset(data, Tool=="tina")
+fvB <- subset(data, Tool=="tina4ti2")
+#fvB <- subset(data, Tool=="tina")
 
 colnames(fvA) <- paste(colnames(fvA), "its", sep = "_")
 colnames(fvB) <- paste(colnames(fvB), "tina", sep = "_")
@@ -65,7 +65,7 @@ timereal2 <- ggplot(fperf,
   scale_y_continuous(trans='log10', breaks=c(10,100,1000,10000,60000,120000),labels = c("0.01s","0.1s","1s","10s","1min","2min")) +
   scale_x_continuous(trans='log10', breaks=c(10,100,1000,10000,60000,120000),labels = c("0.01s","0.1s","1s","10s","1min","2min"))  + 
   geom_abline(intercept = 0, slope = 1)  + 
-  scale_color_manual(values = c("orange", "blue","black")) +
+  scale_color_manual(values = c("orange", "blue","green","red")) +
   scale_fill_hue(l=45) +
   #  annotate("text", x=1200, y=10, label= nrow(subset(perf, Test.fin_vA < Test.fin_vB))) + 
   #  annotate("text", x=10, y=1200, label= nrow(subset(perf, Test.fin_vA > Test.fin_vB))) + 
@@ -82,7 +82,7 @@ memreal2 <- ggplot(fperf,
   scale_y_continuous(trans='log10', breaks=c(10000,100000,1000000,3000000,10000000,16000000),labels = c("10MB","100MB","1GB","3GB","10GB","16GB")) +
   scale_x_continuous(trans='log10', breaks=c(10000,100000,1000000,3000000,10000000,16000000),labels = c("10MB","100MB","1GB","3GB","10GB","16GB"))  + 
   geom_abline(intercept = 0, slope = 1)  + 
-  scale_color_manual(values = c("orange", "blue","black")) +
+  scale_color_manual(values = c("orange", "blue","green","red")) +
   scale_fill_hue(l=45) +
   #  annotate("text", x=1200, y=10, label= nrow(subset(perf, Test.fin_vA < Test.fin_vB))) + 
   #  annotate("text", x=10, y=1200, label= nrow(subset(perf, Test.fin_vA > Test.fin_vB))) + 
@@ -99,9 +99,11 @@ memreal2 <- ggplot(fperf,
 message("Total problems :",nrow(fperf))
 message("ITS solves :",sum(fperf$Status_its == "OK"))
 message("ITS timeout :",sum(fperf$Status_its == "TO"))
+message("ITS overflow :",sum(endsWith(fperf$Status_its,"_OF")))
 message("Tina solves :",sum(fperf$Status_tina == "OK"))
 message("Tina timeout :",sum(fperf$Status_tina == "TO"))
 message("Tina mem overflow :",sum(fperf$Status_tina == "MOVF"))
+message("Tina overflow :",sum(endsWith(fperf$Status_tina,"_OF")))
 message("Tina error :",sum(fperf$Status_tina == "ERR"))
 
 
