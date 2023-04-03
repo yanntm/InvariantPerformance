@@ -4,17 +4,17 @@ This repository contains scripts and logs of experiments on computation of Petri
 
 This experiment compares the performance of these two tools over the set of models taken from the Model-Checking Contest (2022 edition) http://mcc.lip6.fr.
 
-![Time](./time.svg?)
+![Time](./time.svg)
 
-![Memory](./mem.svg?)
+![Memory](./mem.svg)
 
 Overall results :
 * 1384 total models evaluated
-* ITS-Tools solved 1374 and timed out (>120 seconds) in 10 cases
-* Tina with 4ti2 solved 1215, timed out (>120 seconds) in 157 cases and produced a memory overflow (>16 GB) in 8 cases.
-* Tina without 4ti2 solved 948, timed out (>120 seconds) in 289 cases and produced a memory overflow (>16 GB) in 146 cases.
+* ITS-Tools solved 1355, produced an integer overflow in 20 cases, and timed out (>120 seconds) in 9 cases
+* Tina with 4ti2 solved 1215, produced an integer overflow in 1 case, timed out (>120 seconds) in 157 cases and produced a memory overflow (>16 GB) in 7 cases.
+* Tina without 4ti2 solved 948, produced an integer overflow in 145 case, timed out (>120 seconds) in 289 cases and produced a memory overflow (>16 GB) in 1 case.
 
-Due to Tina with 4ti2 outprforming Tina, we simply compare ITS-Tools to Tina with 4ti2 in the plots.
+Due to Tina with 4ti2 outprforming Tina, we simply compare ITS-Tools to Tina *with* 4ti2 in the plots.
 
 # Running the experiment
 
@@ -56,7 +56,7 @@ We then ran the perl script `logs2csv.pl` to extract from these logs one line pe
 * TotalTime total runtime in ms as reported by ITS-Tools at end of run; this is measured within the application, hence it does not include JVM startup time. Value is 0 for Tina.
 * Time is the total elapsed time as reported by the `time` command converted to milliseconds (or 120 seconds if some error occurred)
 * Mem is the value reported by time in the `maxresident` field, it estimates memory usage in KB.
-* Status is OK if the run finished normally, TO if we timed out, MOVF if there was a memory overflow, ERR if an error was detected
+* Status is OK if the run finished normally, TO if we timed out, MOVF if there was a memory overflow, ERR if an error was detected. We add _OF to runs that produced integer overflow.
 
 The resulting `invar.csv` file is part of this repository.
 
