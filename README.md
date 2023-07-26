@@ -2,6 +2,9 @@
 
 This repository contains scripts and logs of experiments on computation of Petri net invariants using ITS-Tools and Tina.
 
+More details on the algorithm used can be found in the companion paper : https://hal.science/hal-04142675 
+Slides of the presentation are also available here https://github.com/yanntm/InvariantPerformance/blob/master/PNSE23_vfinal.pdf
+
 This experiment compares the performance of these two tools over the set of models taken from the Model-Checking Contest (2022 edition) http://mcc.lip6.fr.
 
 ![Time](./time.svg)
