@@ -49,8 +49,8 @@ foreach my $file (@files) {
 		$tottime=$1;
 		$status="OK";
 		next;
-	    } elsif ($line =~ /"Invariant computation timed out after (\d+) seconds/) {
-		$tottime=$1*1000;
+	    } elsif ($line =~ /TIME LIMIT/) {
+		$tottime=120000;
 		$status="TO";
 		next;
 	    } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
