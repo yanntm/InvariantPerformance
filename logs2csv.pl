@@ -68,7 +68,7 @@ foreach my $file (@files) {
 	    $status .= "_OF";
 	}
 	close IN;
-	print "$model,itstools,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
+	print "$model,PetriSpot,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }
 }   
 
