@@ -29,6 +29,8 @@ for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i | sed 's#/$##g' |  awk 
 for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $NF}') ;  if [ ! -f $model.its ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/itstools/itstools/its-tools -pnfolder $i --Pflows --Tflows  > $model.its 2>&1 ; fi ;  done
 
 for i in ~/Downloads/TEST/INPUTS/*PT*/ ; do model=$(echo $i | sed 's#/$##g' | awk -F/ '{print $NF}') ;  if [ ! -f $model.tina ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user  ./struct -F -q $i/model.pnml > $model.tina 2>&1 ; fi ;  done
+
+for i in ~/Downloads/TEST/INPUTS/*/model.pnml ; do model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $(NF-1)}') ;  if [ ! -f $model.petri ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/PetriSpot/Petri/src/petri -i $i -q --Pflows --Tflows  > $model.petri 2>&1 ; fi ;  done
 ```
 
 We apologize for the hard coded paths, but they can be easily adapted.
@@ -38,6 +40,7 @@ In these commands,
 * `systemd-run` is some cgroups mantra to enforce a memory limit at 16GB
 * `struct` is the Tina utility downloaded from https://projects.laas.fr/tina/download.php, in version 3.7.0. Note that we also installed `4ti2`
 * `its-tools` is the ITS-Tools command line version, available from https://github.com/yanntm/ITS-Tools-MCC We used version 202303281143.
+* `petri` is the PetriSpot command line version, available from https://github.com/yanntm/PetriSpot.
 * Logs are produced in *.its and *.tina and *.struct files; these commands can be rerun if some issue happened and some logs are missing.
 
 These commands produce the raw logs.
