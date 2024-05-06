@@ -30,7 +30,7 @@ for i in ~/Downloads/TEST/INPUTS/*/ ; do model=$(echo $i | sed 's#/$##g' |  awk 
 
 for i in ~/Downloads/TEST/INPUTS/*PT*/ ; do model=$(echo $i | sed 's#/$##g' | awk -F/ '{print $NF}') ;  if [ ! -f $model.tina ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user  ./struct -F -q $i/model.pnml > $model.tina 2>&1 ; fi ;  done
 
-for i in ~/Downloads/TEST/INPUTS/*/model.pnml ; do model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $(NF-1)}') ;  if [ ! -f $model.petri ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/PetriSpot/Petri/src/petri -i $i -q --Pflows --Tflows  > $model.petri 2>&1 ; fi ;  done
+for i in ~/Downloads/TEST/INPUTS/*PT*/model.pnml ; do model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $(NF-1)}') ;  if [ ! -f $model.petri ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/PetriSpot/Petri/src/petri -i $i -q --Pflows --Tflows  > $model.petri 2>&1 ; fi ;  done
 ```
 
 We apologize for the hard coded paths, but they can be easily adapted.
