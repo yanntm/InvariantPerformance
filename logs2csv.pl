@@ -40,8 +40,6 @@ foreach my $file (@files) {
 		} else {
 		    $oft=1;
 		}
-	    } elsif ($line =~ /Net is not a P/) {
-	        $status="ERR";
 	    } elsif ($line =~ /Parsed PT model containing (\d+) places and (\d+) transitions and (\d+) arcs in (\d+) ms/) {
 		$cardp=$1;
 		$cardt=$2;
