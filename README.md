@@ -74,3 +74,13 @@ We use as time measurement the sum of reported times to compute P and T flows by
 
 We also filter COL models at this stage, it seems that Tina is computing the invariants of the skeleton of the net when provided a COL model, whereas ITS-Tools actually unfolds the model and reports invariants on it's unfolding, so that the results on COL models are incomparable.
 
+
+# Acknowledgements
+
+This repository is available under GPL.
+
+Repository created by Yann Thierry-Mieg, LIP6, Sorbonne Université, CNRS
+
+Contributions (PetriSpot integration) by Soufiane El Mouahid (Master student @ Sorbonne, 2024)
+
+
