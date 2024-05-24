@@ -287,3 +287,52 @@ foreach my $file (@files) {
     }
 }   
 
+
+@files = <*gspn>;
+foreach my $file (@files) {
+    my $model = $file;
+    $model =~ s/\.gspn//g;
+    my $tool = "GreatSPN";
+    my $status = "UNK";
+    my ($ptime, $ttime, $constp, $nbp, $nbt, $tottime, $timecmd, $tmem) = (-1, -1, 0, -1, -1, -1, -1, -1);
+    my ($cardp, $cardt, $carda) = (-1, -1, -1);
+    $carda = 0;  # The log does not provide arc information
+
+    open my $fh, '<', $file or die "Could not open file '$file' $!";
+    while (my $line = <$fh>) {
+        chomp $line;
+        if ($line =~ /PLACES:\s+(\d+)/) {
+            $cardp = $1;
+        } elsif ($line =~ /TRANSITIONS:\s+(\d+)/) {
+            $cardt = $1;
+        } elsif ($line =~ /FOUND (\d+) VECTORS IN THE PLACE FLOW BASIS/) {
+            $nbp = $1;
+        } elsif ($line =~ /FOUND (\d+) VECTORS IN THE TRANSITION FLOW BASIS/) {
+            $nbt = $1;
+        } elsif ($line =~ /TOTAL TIME: \[User (\d+\.\d+)s, Sys (\d+\.\d+)s\]/) {
+            my $user_time = $1;
+            my $sys_time = $2;
+            if ($ptime == -1) {
+                $ptime = ($user_time + $sys_time) * 1000.0;  # Convert to milliseconds
+            } else {
+                $ttime = ($user_time + $sys_time) * 1000.0;  # Convert to milliseconds
+            }
+        } elsif ($line =~ /(\d+\.\d+)user\s+(\d+\.\d+)system\s+(\d+):(\d+)\.(\d+)elapsed/) {
+            my $user = $1;
+            my $system = $2;
+            my $minutes = $3;
+            my $seconds = $4;
+            my $fraction = $5;
+            $timecmd = 60000 * $minutes + $seconds * 1000 + $fraction;  # Convert to milliseconds
+        } 
+        if ($line =~ /(\d+)maxresident\)k/) {
+            $tmem = $1;
+        }
+    }
+    close $fh;
+
+    $tottime = $ptime + $ttime;  # Sum of PTime and TTime
+    $status = "OK" if $ptime != -1 && $ttime != -1;
+
+    print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
+}
