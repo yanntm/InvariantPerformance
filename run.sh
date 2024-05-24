@@ -38,12 +38,12 @@ mkdir -p greatspn
 pushd greatspn
 if [ ! -f "DSPN-Tool" ]; then
   wget https://github.com/yanntm/MCC-drivers/raw/master/greatspn/greatspn/lib/app/portable_greatspn/bin/DSPN-Tool
-  export DSPN=$PWD/DSPN-Tool
 fi
+export DSPN=$PWD/DSPN-Tool
 if [ ! -f "GSOL" ]; then
   wget https://github.com/yanntm/MCC-drivers/raw/master/greatspn/greatspn/lib/app/portable_greatspn/bin/GSOL
-  export GSOL=$PWD/GSOL
 fi
+export GSOL=$PWD/GSOL
 chmod a+x *
 popd
 
@@ -52,9 +52,9 @@ mkdir -p petrispot
 pushd petrispot
 if [ ! -f "petri" ]; then
   wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri
-  export PETRISPOT=$PWD/petri
-  chmod a+x $PETRISPOT
+  chmod a+x petri
 fi
+export PETRISPOT=$PWD/petri
 popd
 
 # itstools
@@ -66,8 +66,8 @@ if [ ! -f "its-tools" ]; then
   rm fr.lip6.move.gal.itscl.product-linux.gtk.x86_64.zip
   # Run once to cache the OSGi configuration
   ./its-tools
-  export ITSTOOLS=$PWD/its-tools
 fi
+export ITSTOOLS=$PWD/its-tools
 popd
 
 # Utilities for timeout
