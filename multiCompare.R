@@ -118,16 +118,15 @@ plot_comparisons <- function(df, tool1, tool2) {
 }
 
 
-# Example use within script to apply these functions to each tool combination
 tools <- unique(data$Tool)
-combinations <- expand.grid(tools, tools, stringsAsFactors = FALSE)
-combinations <- combinations[combinations$Var1 != combinations$Var2,]
+combinations <- combn(tools, 2, simplify = FALSE)
 
-for(i in 1:nrow(combinations)) {
-  tool1 <- combinations$Var1[i]
-  tool2 <- combinations$Var2[i]
+for(combo in combinations) {
+  tool1 <- combo[1]
+  tool2 <- combo[2]
   pdf(paste0("Comparison_", tool1, "_", tool2, ".pdf"))
   print(plot_comparisons(wide_data, tool1, tool2))
   dev.off()
 }
+
 
