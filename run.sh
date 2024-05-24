@@ -107,7 +107,7 @@ cd $ROOT
 mkdir -p logs
 export LOGS=$PWD/logs
 
-for i in $MODELDIR/Air*0?0/ ; do 
+for i in $MODELDIR/*/ ; do 
 	cd $i
 	model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $NF}') ;  
 	echo "Treating $model" ;  
