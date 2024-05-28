@@ -1,27 +1,6 @@
 #!/bin/bash
 
-# Step 1: Download models
-if [ ! -d "pnmcc-models-2023" ]; then
-  git clone --depth 1 --branch gh-pages https://github.com/yanntm/pnmcc-models-2023.git
-fi
-
-export ROOT=$PWD
-export MODELDIR=$PWD/pnmcc-models-2023/INPUTS/
-
-pushd $MODELDIR
-
-# Remove COL models
-rm *-COL-*.tgz
-
-# Unzip
-for i in *.tgz ; do tar xzf $i ; done
-
-# Clear formula files
-for i in */ ; do cd $i ; rm Reachability*.xml LTL*.xml UpperBounds.xml CTL*.xml ; cd .. ; done
-
-popd
-
-# Step 2: Grab tools
+# Step 1: Grab tools and the timeout utility
 
 # Tina
 mkdir -p tina
@@ -39,10 +18,10 @@ pushd greatspn
 if [ ! -f "DSPN-Tool" ]; then
   wget https://github.com/yanntm/MCC-drivers/raw/master/greatspn/greatspn/lib/app/portable_greatspn/bin/DSPN-Tool
 fi
-export DSPN=$PWD/DSPN-Tool
 if [ ! -f "GSOL" ]; then
   wget https://github.com/yanntm/MCC-drivers/raw/master/greatspn/greatspn/lib/app/portable_greatspn/bin/GSOL
 fi
+export DSPN=$PWD/DSPN-Tool
 export GSOL=$PWD/GSOL
 chmod a+x *
 popd
@@ -77,22 +56,43 @@ fi
 export TIMEOUT=$PWD/timeout.pl
 chmod a+x $TIMEOUT
 
-# Step 3: Run .net .def transformations for GreatSPN
+# Step 2: Download models and prepare them
+
+if [ ! -d "pnmcc-models-2023" ]; then
+  git clone --depth 1 --branch gh-pages https://github.com/yanntm/pnmcc-models-2023.git
+fi
+
+export ROOT=$PWD
+export MODELDIR=$PWD/pnmcc-models-2023/INPUTS/
+
 pushd $MODELDIR
-for i in */ ; do 
-  cd $i
-  if [ ! -f "model.def" ]; then
+
+# Remove COL models
+rm *-COL-*.tgz
+
+# Process each TGZ file
+for i in *.tgz; do
+  model_dir="${i%.tgz}"
+  if [ ! -d "$model_dir" ]; then
+    # Unzip
+    tar xzf $i
+    cd $model_dir
+    # Clear useless formula files
+    rm Reachability*.xml LTL*.xml UpperBounds.xml CTL*.xml
+    # Convert to GSPN
     $GSOL -use-pnml-ids $PWD/model.pnml -export-greatspn $PWD/model
     if [[ ! -f model.def ]]; then
       echo "Cannot convert PNML file into net/def format: $PWD"
       rm -f model.net model.def
     fi
+    cd ..
   fi
-  cd ..
 done
+
 popd
 
-# Step 4: Run and collect logs
+# Step 3: Run the tools
+
 export LIMITS="$TIMEOUT 120 time systemd-run --scope -p MemoryMax=16G --user"
 cd $ROOT
 mkdir -p logs
@@ -100,14 +100,14 @@ export LOGS=$PWD/logs
 
 for i in $MODELDIR/*/ ; do 
   cd $i
-  model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $NF}')  
-  echo "Treating $model"  
+  model=$(echo $i | sed 's#/$##g' | awk -F/ '{print $NF}')
+  echo "Treating $model"
 
   # Tina with 4ti2
   if [ ! -f "$LOGS/$model.struct" ]; then
     $LIMITS $STRUCT -4ti2 -F -q $i/model.pnml > $LOGS/$model.struct 2>&1
   fi
-  
+
   # Tina by itself
   if [ ! -f "$LOGS/$model.tina" ]; then
     $LIMITS $STRUCT -F -q $i/model.pnml > $LOGS/$model.tina 2>&1
@@ -115,12 +115,12 @@ for i in $MODELDIR/*/ ; do
 
   # itstools
   if [ ! -f "$LOGS/$model.its" ]; then
-    $LIMITS $ITSTOOLS -pnfolder $i --Pflows --Tflows  > $LOGS/$model.its 2>&1
+    $LIMITS $ITSTOOLS -pnfolder $i --Pflows --Tflows > $LOGS/$model.its 2>&1
   fi
 
   # PetriSpot
   if [ ! -f "$LOGS/$model.petri" ]; then
-    $LIMITS $PETRISPOT -i $i/model.pnml -q --Pflows --Tflows  > $LOGS/$model.petri 2>&1
+    $LIMITS $PETRISPOT -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri 2>&1
   fi
 
   # GreatSPN
@@ -130,4 +130,3 @@ for i in $MODELDIR/*/ ; do
 done
 
 cd $ROOT
-
