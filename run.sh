@@ -29,11 +29,15 @@ popd
 # PetriSpot
 mkdir -p petrispot
 pushd petrispot
-if [ ! -f "petri" ]; then
-  wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri
-  chmod a+x petri
+if [ ! -f "petri32" ]; then
+  wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri32
+  wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri64
+  wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri128
+  chmod a+x petri*
 fi
-export PETRISPOT=$PWD/petri
+export PETRISPOT32=$PWD/petri32
+export PETRISPOT64=$PWD/petri64
+export PETRISPOT128=$PWD/petri128
 popd
 
 # itstools
@@ -118,9 +122,19 @@ for i in $MODELDIR/*/ ; do
     $LIMITS $ITSTOOLS -pnfolder $i --Pflows --Tflows > $LOGS/$model.its 2>&1
   fi
 
+  # PetriSpot 32 bit
+  if [ ! -f "$LOGS/$model.petri32" ]; then
+    $LIMITS $PETRISPOT32 -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri32 2>&1
+  fi
+
   # PetriSpot
-  if [ ! -f "$LOGS/$model.petri" ]; then
-    $LIMITS $PETRISPOT -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri 2>&1
+  if [ ! -f "$LOGS/$model.petri64" ]; then
+    $LIMITS $PETRISPOT64 -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri64 2>&1
+  fi
+
+  # PetriSpot
+  if [ ! -f "$LOGS/$model.petri128" ]; then
+    $LIMITS $PETRISPOT128 -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri128 2>&1
   fi
 
   # GreatSPN
