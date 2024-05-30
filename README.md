@@ -1,7 +1,6 @@
 # InvariantPerformance
 
-This repository provides a comprehensive comparison of tools for computing Petri net invariants on a large benchmark set from the [Model-Checking Contest (MCC)](https://mcc.lip6.fr). 
-It includes scripts to run the tools, collect logs, transform logs to CSV format, and generate plots and analyses using Python or R.
+This repository provides a comprehensive comparison of tools for computing Petri net invariants on a large benchmark set from the [Model-Checking Contest (MCC)](https://mcc.lip6.fr). It includes scripts to run the tools, collect logs, transform logs to CSV format, and generate plots and analyses using Python or R.
 
 Currently, the repository compares the following tools:
 * [ITS-Tools](https://github.com/lip6/ITSTools)
@@ -9,8 +8,7 @@ Currently, the repository compares the following tools:
 * [PetriSpot](https://github.com/yanntm/PetriSpot)
 * [GreatSPN](https://github.com/greatspn/SOURCES)
 
-This repository was originally built as a companion to the paper ["Efficient Strategies to Compute Invariants, Bounds and Stable Places of Petri nets", Yann Thierry-Mieg, PNSE'23](https://hal.science/hal-04142675); the data and scripts used to build the analysis and plots in that paper are still visible [here](https://github.com/yanntm/InvariantPerformance/tree/PNSE23) or as a release (side panel). 
-Slides of the presentation are also available here https://github.com/yanntm/InvariantPerformance/blob/master/PNSE23_vfinal.pdf
+This repository was originally built as a companion to the paper ["Efficient Strategies to Compute Invariants, Bounds and Stable Places of Petri nets" by Yann Thierry-Mieg, PNSE'23](https://hal.science/hal-04142675); the data and scripts used to build the analysis and plots in that paper are still visible [here](https://github.com/yanntm/InvariantPerformance/tree/PNSE23) or as a release (side panel). Slides of the presentation are also available [here](https://github.com/yanntm/InvariantPerformance/blob/master/PNSE23_vfinal.pdf).
 
 The current repository is easier to use, compares more tools, and uses MCC 2023 models.
 
@@ -28,18 +26,18 @@ The current repository is easier to use, compares more tools, and uses MCC 2023 
    ./run.sh
    ```
    This script performs the following tasks:
-   * Downloads the necessary tools (versions are specified in the script; logs correspond to Tina 3.8.0, GreatSPN MCC 2022 release, ITS-Tools 202405141337, PetriSpot at this revision https://github.com/yanntm/PetriSpot/commit/7b8898f36256cad5382452f03952d08db6605a42).
+   * Downloads the necessary tools (versions are specified in the script; logs correspond to Tina 3.8.0, GreatSPN MCC 2022 release, ITS-Tools 202405141337, PetriSpot at this [revision](https://github.com/yanntm/PetriSpot/commit/7b8898f36256cad5382452f03952d08db6605a42)).
    * Downloads and prepares models from [pnmcc-models-2023](https://github.com/yanntm/pnmcc-models-2023), and builds GreatSPN format files from PNML. We also clear COL models since they are not uniformly supported by tools.
-   * Runs each tool on each model, configured to compute a generative basis of P flows and T flows (precise invocation flags in `run.sh` script). 
-   We limit memory to 16GB and time to 120 seconds wall clock time (none of the tools are concurrent). 
+   * Runs each tool on each model, configured to compute a generative basis of P flows and T flows (precise invocation flags in `run.sh` script). We limit memory to 16GB and time to 120 seconds wall clock time (none of the tools are concurrent).
 
 3. **Log Generation:**
-   Logs for each tool are produced in the `logs/` directory, with file extensions specific to each tool (e.g., `.its`, `.tina`, `.petri32`,...).
+   Logs for each tool are produced in the `logs/` directory, with file extensions specific to each tool (e.g., `.its`, `.tina`, `.petri32`, etc.).
 
-The full logs of our run are available in `rawlogs.tgz`, 
-Before zipping them into `rawlogs.tgz` of this repository, we first remove the actual invariants from the output as the archived logs are otherwise over 250MB.
-We ran the following sed line :`sed -i '/inv :.*/d' *.its`.
-The flag `-q` we use for Tina means "quiet" and avoids printing the actual invariants, but ITS-Tools does not have such a flag. PetriSpot does have a `-q`, GreatSPN outputs the invariants in files placed next to the model itself.
+   The full logs of our run are available in `rawlogs.tgz`. Before zipping them into `rawlogs.tgz`, we first remove the actual invariants from the output as the archived logs are otherwise over 250MB. We ran the following sed line:
+   ```bash
+   sed -i '/inv :.*/d' *.its
+   ```
+   The flag `-q` we use for Tina means "quiet" and avoids printing the actual invariants, but ITS-Tools does not have such a flag. PetriSpot does have a `-q`, GreatSPN outputs the invariants in files placed next to the model itself.
 
 4. **Convert Logs to CSV:**
    Use the `logs2csv.pl` script to consolidate log data into a CSV file:
@@ -63,9 +61,7 @@ The flag `-q` we use for Tina means "quiet" and avoids printing the actual invar
    * **Mem**: Memory usage in KB as reported by the `maxresident` field in `time`
    * **Status**: Status of the run (`OK`, `TO`, `MOVF`, `ERR`, `_OF`)
 
-The file `invar.csv` obtained from our logs is part of this repo. It includes traces from `PetriSpot` without a size indicator;
- this is a version of the tool prior to introduction of template parameters to set the size of integer used, so should be comparable to
- PetriSpot32 version for all useful purpose.
+   The file `invar.csv` obtained from our logs is part of this repo. It includes traces from `PetriSpot` without a size indicator; this is a version of the tool prior to the introduction of template parameters to set the size of the integer used, so it should be comparable to the PetriSpot32 version for all useful purposes.
 
 5. **Generate Reports:**
    To build comparison plots, tables, and graphs, use the `makeReport.py` and `multiCompare.R` scripts:
@@ -73,8 +69,6 @@ The file `invar.csv` obtained from our logs is part of this repo. It includes tr
    python makeReport.py
    Rscript multiCompare.R
    ```
-
-
 
 ## Acknowledgements
 
