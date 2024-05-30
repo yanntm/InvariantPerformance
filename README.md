@@ -61,7 +61,7 @@ The current repository is easier to use, compares more tools, and uses MCC 2023 
    * **Mem**: Memory usage in KB as reported by the `maxresident` field in `time`
    * **Status**: Status of the run (`OK`, `TO`, `MOVF`, `ERR`, `_OF`)
 
-   The file `invar.csv` obtained from our logs is part of this repo. It includes traces from `PetriSpot` without a size indicator; this is a version of the tool prior to the introduction of template parameters to set the size of the integer used, so it should be comparable to the PetriSpot32 version for all useful purposes.
+   The file `invar.csv` obtained from our logs is part of this repo. 
 
 5. **Generate Reports:**
    To build comparison plots, tables, and graphs, use the `makeReport.py` and `multiCompare.R` scripts:
@@ -69,6 +69,23 @@ The current repository is easier to use, compares more tools, and uses MCC 2023 
    python makeReport.py
    Rscript multiCompare.R
    ```
+   
+The python builds a pdf [analysis_report.pdf](./analysis_report.pdf) some distributions as box plots, some comparisons using cactus plots, as well as tables of results such as this one.   
+
+| Tool         | Failure | Success | Total |
+|--------------|---------|---------|-------|
+| GreatSPN     | 69      | 1355    | 1424  |
+| PetriSpot128 | 11      | 1413    | 1424  |
+| PetriSpot32  | 55      | 1369    | 1424  |
+| PetriSpot64  | 11      | 1413    | 1424  |
+| itstools     | 28      | 1396    | 1424  |
+| tina         | 504     | 920     | 1424  |
+| tina4ti2     | 256     | 1168    | 1424  |
+
+The R compares each pair of tools using scatter plots in time and memory and builds a pdf [].
+Each point is a model, so each plot contains 1424 points. Scales are log/log.
+
+
 
 ## Acknowledgements
 
