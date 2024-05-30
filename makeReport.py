@@ -13,7 +13,7 @@ data = pd.read_csv(file_path)
 data['Time'] = data['Time'].replace(-1, 120000)
 
 # Add a column for success or failure
-data['Status'] = data.apply(lambda row: 'Failure' if row['NBP'] == -1 or row['NBT'] == -1 else 'Success', axis=1)
+data['Status'] = data.apply(lambda row: 'Failure' if row['Status'] != 'OK' else 'Success', axis=1)
 
 # Function to calculate summary statistics (mean and median)
 def calculate_summary_statistics(df):
