@@ -1,86 +1,86 @@
 # InvariantPerformance
 
-This repository contains scripts and logs of experiments on computation of Petri net invariants using ITS-Tools and Tina.
+This repository provides a comprehensive comparison of tools for computing Petri net invariants on a large benchmark set from the [Model-Checking Contest (MCC)](https://mcc.lip6.fr). 
+It includes scripts to run the tools, collect logs, transform logs to CSV format, and generate plots and analyses using Python or R.
 
-More details on the algorithm used can be found in the companion paper : https://hal.science/hal-04142675 
+Currently, the repository compares the following tools:
+* [ITS-Tools](https://github.com/lip6/ITSTools)
+* [Tina](https://projects.laas.fr/tina/index.php)
+* [PetriSpot](https://github.com/yanntm/PetriSpot)
+* [GreatSPN](https://github.com/greatspn/SOURCES)
+
+This repository was originally built as a companion to the paper ["Efficient Strategies to Compute Invariants, Bounds and Stable Places of Petri nets", Yann Thierry-Mieg, PNSE'23](https://hal.science/hal-04142675); the data and scripts used to build the analysis and plots in that paper are still visible [here](https://github.com/yanntm/InvariantPerformance/tree/PNSE23) or as a release (side panel). 
 Slides of the presentation are also available here https://github.com/yanntm/InvariantPerformance/blob/master/PNSE23_vfinal.pdf
 
-This experiment compares the performance of these two tools over the set of models taken from the Model-Checking Contest (2022 edition) http://mcc.lip6.fr.
+The current repository is easier to use, compares more tools, and uses MCC 2023 models.
 
-![Time](./time.svg)
+## How to Reproduce
 
-![Memory](./mem.svg)
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/yanntm/InvariantPerformance.git
+   cd InvariantPerformance
+   ```
 
-Overall results :
-* 1384 total models evaluated
-* ITS-Tools solved 1355, produced an integer overflow in 20 cases, and timed out (>120 seconds) in 9 cases
-* Tina with 4ti2 solved 1215, produced an integer overflow in 1 case, timed out (>120 seconds) in 157 cases and produced a memory overflow (>16 GB) in 7 cases.
-* Tina without 4ti2 solved 948, produced an integer overflow in 145 case, timed out (>120 seconds) in 289 cases and produced a memory overflow (>16 GB) in 1 case.
+2. **Run the Experiment:**
+   Execute the `run.sh` script to automate the entire process:
+   ```bash
+   ./run.sh
+   ```
+   This script performs the following tasks:
+   * Downloads the necessary tools (versions are specified in the script; logs correspond to Tina 3.8.0, GreatSPN MCC 2022 release, ITS-Tools 202405141337, PetriSpot at this revision https://github.com/yanntm/PetriSpot/commit/7b8898f36256cad5382452f03952d08db6605a42).
+   * Downloads and prepares models from [pnmcc-models-2023](https://github.com/yanntm/pnmcc-models-2023), and builds GreatSPN format files from PNML. We also clear COL models since they are not uniformly supported by tools.
+   * Runs each tool on each model, configured to compute a generative basis of P flows and T flows (precise invocation flags in `run.sh` script). 
+   We limit memory to 16GB and time to 120 seconds wall clock time (none of the tools are concurrent). 
 
-Due to Tina with 4ti2 outprforming Tina, we simply compare ITS-Tools to Tina *with* 4ti2 in the plots.
+3. **Log Generation:**
+   Logs for each tool are produced in the `logs/` directory, with file extensions specific to each tool (e.g., `.its`, `.tina`, `.petri32`,...).
 
-# Running the experiment
-
-We used the following shell commands to build the raw logs:
-
-```
-for i in ~/Downloads/TEST/INPUTS/*-PT-*/ ; do model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $NF}') ;  if [ ! -f $model.struct ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user  ./struct -4ti2 -F -q $i/model.pnml > $model.struct 2>&1 ; fi ;  done
-
-for i in ~/Downloads/TEST/INPUTS/*-PT-*/ ; do model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $NF}') ;  if [ ! -f $model.its ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/itstools/itstools/its-tools -pnfolder $i --Pflows --Tflows  > $model.its 2>&1 ; fi ;  done
-
-for i in ~/Downloads/TEST/INPUTS/*-PT-*/ ; do model=$(echo $i | sed 's#/$##g' | awk -F/ '{print $NF}') ;  if [ ! -f $model.tina ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user  ./struct -F -q $i/model.pnml > $model.tina 2>&1 ; fi ;  done
-
-for i in ~/Downloads/TEST/INPUTS/*-PT-*/model.pnml ; do model=$(echo $i | sed 's#/$##g' |  awk -F/ '{print $(NF-1)}') ;  if [ ! -f $model.petri ] ; then echo "Treating $model" ;  ~/Downloads/TEST/bin/timeout.pl 120 time systemd-run --scope -p MemoryMax=16G --user ~/Downloads/TEST/PetriSpot/Petri/src/petri -i $i -q --Pflows --Tflows  > $model.petri 2>&1 ; fi ;  done
-```
-
-We apologize for the hard coded paths, but they can be easily adapted.
-In these commands,
-* `~/Downloads/TEST/INPUTS/*/` corresponds to all models of the MCC 2022, extracted from our https://github.com/yanntm/pnmcc-models-2022 repository. We dropped 4 models with respect to 2022 MCC : StigmergyCommit-PT-11b, TokenRing-PT-040, TokenRing-PT-050 which are all too big to be stored on GitHub (over 100MB compressed) and GPPP-PT-C0010N1000000000 whose initial marking overflows from 32 bit integers and both tools fail immediately. 
-* `timeout.pl` is a small utility to force a timeout, available from https://github.com/yanntm/MCC-drivers/blob/master/bin/timeout.pl
-* `systemd-run` is some cgroups mantra to enforce a memory limit at 16GB
-* `struct` is the Tina utility downloaded from https://projects.laas.fr/tina/download.php, in version 3.7.0. Note that we also installed `4ti2`
-* `its-tools` is the ITS-Tools command line version, available from https://github.com/yanntm/ITS-Tools-MCC We used version 202303281143.
-* `petri` is the PetriSpot command line version, available from https://github.com/yanntm/PetriSpot.
-* Logs are produced in *.its and *.tina and *.struct files; these commands can be rerun if some issue happened and some logs are missing.
-
-These commands produce the raw logs.
+The full logs of our run are available in `rawlogs.tgz`, 
 Before zipping them into `rawlogs.tgz` of this repository, we first remove the actual invariants from the output as the archived logs are otherwise over 250MB.
 We ran the following sed line :`sed -i '/inv :.*/d' *.its`.
-The flag `-q` we use for Tina means "quiet" and avoids printing the actual invariants, but ITS-Tools does not have such a flag.
+The flag `-q` we use for Tina means "quiet" and avoids printing the actual invariants, but ITS-Tools does not have such a flag. PetriSpot does have a `-q`, GreatSPN outputs the invariants in files placed next to the model itself.
 
-We then ran the perl script `logs2csv.pl` to extract from these logs one line per log that provides the following columns :
-* Model the name of the model
-* Tool the tool, its, tina4ti2 or tina
-* CardP the number of places in the net
-* CardT the number of transitions in the net
-* CardA the number of arcs in the net
-* PTime the time to compute P flows in ms
-* TTime the time to compute T flows in ms
-* ConstP the number of constant places reported by ITS-tools (always 0 in Tina runs). These constant places are simplified away in ITS-Tools so they do not produce trivial flows with a single entry like with Tina. 
-* NBP the number of P flows reported
-* NBT the number of T flows reported
-* TotalTime total runtime in ms as reported by ITS-Tools at end of run; this is measured within the application, hence it does not include JVM startup time. Value is 0 for Tina.
-* Time is the total elapsed time as reported by the `time` command converted to milliseconds (or 120 seconds if some error occurred)
-* Mem is the value reported by time in the `maxresident` field, it estimates memory usage in KB.
-* Status is OK if the run finished normally, TO if we timed out, MOVF if there was a memory overflow, ERR if an error was detected. We add _OF to runs that produced integer overflow.
+4. **Convert Logs to CSV:**
+   Use the `logs2csv.pl` script to consolidate log data into a CSV file:
+   ```bash
+   cd logs
+   ../logs2csv.pl > invar.csv
+   ```
+   The resulting `invar.csv` file includes the following columns:
+   * **Model**: The name of the model
+   * **Tool**: The tool used (`its`, `tina4ti2`, or `tina`)
+   * **CardP**: The number of places in the net
+   * **CardT**: The number of transitions in the net
+   * **CardA**: The number of arcs in the net
+   * **PTime**: The time to compute P flows in ms
+   * **TTime**: The time to compute T flows in ms
+   * **ConstP**: The number of constant places reported by ITS-Tools (always 0 in Tina runs)
+   * **NBP**: The number of P flows reported
+   * **NBT**: The number of T flows reported
+   * **TotalTime**: Total runtime in ms as reported by ITS-Tools at end of run (0 for Tina)
+   * **Time**: Total elapsed time as reported by the `time` command, converted to milliseconds (or 120 seconds if an error occurred)
+   * **Mem**: Memory usage in KB as reported by the `maxresident` field in `time`
+   * **Status**: Status of the run (`OK`, `TO`, `MOVF`, `ERR`, `_OF`)
 
-The resulting `invar.csv` file is part of this repository.
+The file `invar.csv` obtained from our logs is part of this repo. It includes traces from `PetriSpot` without a size indicator;
+ this is a version of the tool prior to introduction of template parameters to set the size of integer used, so should be comparable to
+ PetriSpot32 version for all useful purpose.
 
-Finally to produce some visualisation, we used the script `compareForm.R`, this produces the `fplots.pdf` file and `mem.svg` `time.svg`.
+5. **Generate Reports:**
+   To build comparison plots, tables, and graphs, use the `makeReport.py` and `multiCompare.R` scripts:
+   ```bash
+   python makeReport.py
+   Rscript multiCompare.R
+   ```
 
-We use as time measurement the sum of reported times to compute P and T flows by both tools; while elapsed time
- measured externally is also interesting it is polluted by JVM startup time (around 700 ms) and the fact that ITS-Tools actually
- prints the invariants (with some intense I/O) when Tina simply prints the number of invariants computed.
-
-We also filter COL models at this stage, it seems that Tina is computing the invariants of the skeleton of the net when provided a COL model, whereas ITS-Tools actually unfolds the model and reports invariants on it's unfolding, so that the results on COL models are incomparable.
 
 
-# Acknowledgements
+## Acknowledgements
 
-This repository is available under GPL.
+This repository is available under the GPL license.
 
-Repository created by Yann Thierry-Mieg, LIP6, Sorbonne Université, CNRS
+Created by Yann Thierry-Mieg, LIP6, Sorbonne Université, CNRS.
 
-Contributions (PetriSpot integration) by Soufiane El Mouahid (Master student @ Sorbonne, 2024)
-
+Contributions (PetriSpot integration) by Soufiane El Mouahid (Master student @ Sorbonne, 2024).
 
