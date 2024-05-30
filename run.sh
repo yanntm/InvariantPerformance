@@ -30,9 +30,9 @@ popd
 mkdir -p petrispot
 pushd petrispot
 if [ ! -f "petri32" ]; then
-  wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri32
-  wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri64
-  wget https://github.com/soufianeelm/PetriSpot/raw/Inv-Linux/petri128
+  wget https://github.com/yanntm/PetriSpot/raw/Inv-Linux/petri32
+  wget https://github.com/yanntm/PetriSpot/raw/Inv-Linux/petri64
+  wget https://github.com/yanntm/PetriSpot/raw/Inv-Linux/petri128
   chmod a+x petri*
 fi
 export PETRISPOT32=$PWD/petri32
