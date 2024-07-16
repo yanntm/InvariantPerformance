@@ -244,7 +244,13 @@ foreach my $file (@files) {
 		} else {
 		    $nbt=$1;
 		}
-	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
+	    } elsif ($line =~ /no flow\(s\)/) {
+		if ($nbp == -1) {
+		    $nbp=0;
+		} else {
+		    $nbt=0;
+		}
+  	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
 		if ($nbp == -1) {
 		    next;
 		} elsif ($nbp != -1 && $nbt == -1) {
