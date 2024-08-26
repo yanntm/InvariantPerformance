@@ -69,7 +69,7 @@ foreach my $file (@files) {
         print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }
 }
-  
+
 
 
 
@@ -174,6 +174,12 @@ foreach my $file (@files) {
 		} else {
 		    $nbt=$1;
 		}
+	    } elsif ($line =~ /no flow\(s\)/) {
+		if ($nbp == -1) {
+		    $nbp=0;
+		} else {
+		    $nbt=0;
+		}
 	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
 		if ($nbp == -1) {
 		    next;
@@ -205,7 +211,7 @@ foreach my $file (@files) {
 		    $timecmd = 60000*$1 + $2*1000 + $3;
 		}
 	    } else {
-	#	print "nomatch: $line\n";
+		#	print "nomatch: $line\n";
 	    }
 	}
 	if ($of==1) {
@@ -281,7 +287,7 @@ foreach my $file (@files) {
 		    $timecmd = 60000*$1 + $2*1000 + $3;
 		}
 	    } else {
-	#	print "nomatch: $line\n";
+		#	print "nomatch: $line\n";
 	    }
 	}
 	if ($of==1) {
