@@ -63,6 +63,11 @@ The current repository is easier to use, compares more tools, and uses MCC 2023 
 
    The file `invar.csv` obtained from our logs is part of this repo. 
 
+Caveat : 
+ * We measure both P and T invariants in a single invocation, so a timeout on places induces a timeout on transitions. 
+ * The status column contains "OK" when both P and T invariants were successfully computed. But the other status values are not fully homogeneous across tools, see the precise collection process is in `logs2csv.pl`. 
+ * The tools are invoked as specified in run.sh, it could be the case that a better configuration or invocation of a tool exists to treat a model (e.g. Tina could be configured to avoid its single overflow).
+
 5. **Generate Reports:**
    To build comparison plots, tables, and graphs, use the `makeReport.py` and `multiCompare.R` scripts:
    ```bash
@@ -82,9 +87,19 @@ The python builds a pdf [analysis_report.pdf](./analysis_report.pdf) some distri
 | tina         | 504     | 920     | 1424  |
 | tina4ti2     | 256     | 1168    | 1424  |
 
-The R compares each pair of tools using scatter plots in time and memory and builds a pdf [].
+The R compares each pair of tools using scatter plots in time and memory and builds a pdf [Tool_Comparisons.pdf](./Tool_Comparisons.pdf).
 Each point is a model, so each plot contains 1424 points. Scales are log/log.
+It also builds summary tables like this one.
 
+| Tool          | Mean_Time | Mean_Mem | INVP_OK | INVT_OK | Status_OK | Status_OK_OF | Status_OK_OF_OF | Status_TO | Status_UNK | Status_TO_OF | Status_MOVF_OF |
+|---------------|-----------|----------|---------|---------|-----------|--------------|-----------------|------------|------------|--------------|----------------|
+| PetriSpot128  | 523.0     | 52527.0  | 1423    | 1419    | 1413      | 4            | 2               | 3          | 2          | 0            | 0              |
+| PetriSpot32   | 534.0     | 39797.0  | 1400    | 1396    | 1369      | 24           | 3               | 27         | 1          | 0            | 0              |
+| PetriSpot64   | 526.0     | 52529.0  | 1423    | 1419    | 1413      | 4            | 2               | 3          | 2          | 0            | 0              |
+| itstools      | 966.0     | 191040.0 | 1416    | 1414    | 1396      | 14           | 5               | 8          | 0          | 1            | 0              |
+| tina4ti2      | 17885.0   | 859936.0 | 1259    | 1259    | 1259      | 0            | 0               | 164        | 0          | 0            | 1              |
+| tina          | 28689.0   | 198005.0 | 990     | 985     | 985       | 0            | 0               | 298        | 0          | 0            | 141            |
+| GreatSPN      | 972.0     | 14582.0  | 1406    | 1355    | 1355      | 0            | 0               | 0          | 69         | 0            | 0              |
 
 
 ## Acknowledgements
@@ -94,4 +109,6 @@ This repository is available under the GPL license.
 Created by Yann Thierry-Mieg, LIP6, Sorbonne Université, CNRS.
 
 Contributions (PetriSpot integration) by Soufiane El Mouahid (Master student @ Sorbonne, 2024).
+
+Comments leading to corrections by Bernard Berthomieu (LAAS, Tina author).
 
