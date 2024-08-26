@@ -2,6 +2,9 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(ggplot2)
+library(grid)
+library(gridExtra)
+
 
 # Load data
 data <- read.csv("invar.csv", dec = ".", sep = ",", header = TRUE, stringsAsFactors = FALSE)
@@ -28,12 +31,14 @@ wide_data <- data %>%
 tools <- unique(data$Tool)
 
 
-# Define function to get tool statistics including tool name and status breakdown
+# Define function to get tool statistics including tool name, status breakdown, and counts of NBP and NBT >= 0
 get_tool_stats <- function(tool, df) {
   # Prepare the column names
   mean_time_col <- paste("Time", tool, sep = "_")
   mean_mem_col <- paste("Mem", tool, sep = "_")
   status_col <- paste("Status", tool, sep = "_")
+  nbp_col <- paste("NBP", tool, sep = "_")
+  nbt_col <- paste("NBT", tool, sep = "_")
   
   # Aggregate statistics for the tool
   stats <- df %>%
@@ -41,6 +46,8 @@ get_tool_stats <- function(tool, df) {
       Tool = first(tool),  # Include tool name
       Mean_Time = mean(get(mean_time_col), na.rm = TRUE),
       Mean_Mem = mean(get(mean_mem_col), na.rm = TRUE),
+      INVP_OK = sum(get(nbp_col) >= 0, na.rm = TRUE),  # Count of NBP >= 0
+      INVT_OK = sum(get(nbt_col) >= 0, na.rm = TRUE),  # Count of NBT >= 0
       .groups = 'drop'  # Dropping groups to prevent regrouping messages
     )
   
@@ -57,16 +64,17 @@ get_tool_stats <- function(tool, df) {
   return(complete_stats)
 }
 
-
 # Use this function with map_df to gather stats for all tools
 tool_stats <- map_df(tools, ~get_tool_stats(.x, wide_data))
 
+# Replace any remaining NA values with 0
 tool_stats <- tool_stats %>%
   mutate(across(everything(), ~replace_na(., 0)))
 
+# Print the result
 options(dplyr.width = Inf)
-
 tool_stats
+
 
 # Assuming wide_data is already loaded and prepared
 tools <- unique(data$Tool)
@@ -121,12 +129,16 @@ plot_comparisons <- function(df, tool1, tool2) {
 tools <- unique(data$Tool)
 combinations <- combn(tools, 2, simplify = FALSE)
 
+
+# Create the PDF with landscape orientation
+pdf("Tool_Comparisons.pdf")
+
+# Generate and plot comparisons
 for(combo in combinations) {
   tool1 <- combo[1]
   tool2 <- combo[2]
-  pdf(paste0("Comparison_", tool1, "_", tool2, ".pdf"))
-  print(plot_comparisons(wide_data, tool1, tool2))
-  dev.off()
+  plots <- plot_comparisons(wide_data, tool1, tool2)
+  grid.arrange(plots$Time_Comparison, plots$Memory_Comparison, ncol = 1)
 }
 
-
+dev.off()
