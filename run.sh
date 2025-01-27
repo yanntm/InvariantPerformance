@@ -104,64 +104,95 @@ done
 popd
 
 # Step 3: Run the tools
+# Check argument count
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 [FLOWS|SEMIFLOWS]"
+  exit 1
+fi
+
+MODE=$1
+
+if [ "$MODE" = "FLOWS" ]; then
+    TINA_FLAG="-F"
+    ITS_FLAG="--Pflows --Tflows"
+    PETRISPOT_FLAG="--Pflows --Tflows"
+    GSPN_FLAG="-pbasis -tbasis"
+    LOGDIR="logs"
+elif [ "$MODE" = "SEMIFLOWS" ]; then
+    TINA_FLAG="-S"
+    ITS_FLAG="--Psemiflows --Tsemiflows"
+    PETRISPOT_FLAG="--Psemiflows --Tsemiflows"
+    GSPN_FLAG="-pinv -tinv"
+    LOGDIR="semilogs"
+else
+    echo "Usage: $0 [FLOWS|SEMIFLOWS]"
+    exit 1
+fi
 
 export LIMITS="$TIMEOUT 120 time systemd-run --scope -p MemoryMax=16G --user"
-cd $ROOT
-mkdir -p logs
-export LOGS=$PWD/logs
+cd "$ROOT"
+mkdir -p "$LOGDIR"
+export LOGS="$PWD/$LOGDIR"
 
-for i in $MODELDIR/*/ ; do 
-    cd $i
-    model=$(echo $i | sed 's#/$##g' | awk -F/ '{print $NF}')
+for i in "$MODELDIR"/*/; do
+    cd "$i" || exit
+    model=$(echo "$i" | sed 's#/$##' | awk -F/ '{print $NF}')
     echo "Treating $model"
 
-    # Tina by itself, recommended options
+    # Tina by itself
     if [ ! -f "$LOGS/$model.tina" ]; then
-	if [ -f large_marking ]                                                             
-	then
-	    $LIMITS $STRUCTLARGE @MLton fixed-heap 15G -- -F -mp -q $i/model.pnml > $LOGS/$model.tina 2>&1
-	else
-	    $LIMITS $STRUCT @MLton fixed-heap 15G -- -F -mp -q $i/model.pnml > $LOGS/$model.tina 2>&1
-	fi
+        if [ -f large_marking ]; then
+            $LIMITS "$STRUCTLARGE" @MLton fixed-heap 15G -- $TINA_FLAG -mp -q "$i/model.pnml" \
+                > "$LOGS/$model.tina" 2>&1
+        else
+            $LIMITS "$STRUCT" @MLton fixed-heap 15G -- $TINA_FLAG -mp -q "$i/model.pnml" \
+                > "$LOGS/$model.tina" 2>&1
+        fi
     fi
-    
-    # Tina with 4ti2, recommended options
+
+    # Tina with 4ti2
     if [ ! -f "$LOGS/$model.struct" ]; then
-	rm -f /tmp/f-* > /dev/null
-	if [ -f large_marking ]
-	then
-	    $LIMITS $STRUCTLARGE @MLton max-heap 8G -- -4ti2 -F -I -q $i/model.pnml > $LOGS/$model.struct 2>&1
-	else
-	    $LIMITS $STRUCT @MLton max-heap 8G -- -4ti2 -F -I -q $i/model.pnml > $LOGS/$model.struct 2>&1
-	fi
-	rm -f /tmp/f-* > /dev/null
-	sync
+        rm -f /tmp/f-* > /dev/null 2>&1
+        if [ -f large_marking ]; then
+            $LIMITS "$STRUCTLARGE" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I -q "$i/model.pnml" \
+                > "$LOGS/$model.struct" 2>&1
+        else
+            $LIMITS "$STRUCT" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I -q "$i/model.pnml" \
+                > "$LOGS/$model.struct" 2>&1
+        fi
+        rm -f /tmp/f-* > /dev/null 2>&1
+        sync
     fi
 
     # itstools
     if [ ! -f "$LOGS/$model.its" ]; then
-	$LIMITS $ITSTOOLS -pnfolder $i --Pflows --Tflows > $LOGS/$model.its 2>&1
+        $LIMITS "$ITSTOOLS" -pnfolder "$i" $ITS_FLAG \
+            > "$LOGS/$model.its" 2>&1
     fi
-    
-    # PetriSpot 32 bit
+
+    # PetriSpot 32-bit
     if [ ! -f "$LOGS/$model.petri32" ]; then
-	$LIMITS $PETRISPOT32 -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri32 2>&1
+        $LIMITS "$PETRISPOT32" -i "$i/model.pnml" -q $PETRISPOT_FLAG \
+            > "$LOGS/$model.petri32" 2>&1
     fi
-    
-    # PetriSpot
+
+    # PetriSpot 64-bit
     if [ ! -f "$LOGS/$model.petri64" ]; then
-	$LIMITS $PETRISPOT64 -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri64 2>&1
+        $LIMITS "$PETRISPOT64" -i "$i/model.pnml" -q $PETRISPOT_FLAG \
+            > "$LOGS/$model.petri64" 2>&1
     fi
-    
-    # PetriSpot
+
+    # PetriSpot 128-bit
     if [ ! -f "$LOGS/$model.petri128" ]; then
-	$LIMITS $PETRISPOT128 -i $i/model.pnml -q --Pflows --Tflows > $LOGS/$model.petri128 2>&1
+        $LIMITS "$PETRISPOT128" -i "$i/model.pnml" -q $PETRISPOT_FLAG \
+            > "$LOGS/$model.petri128" 2>&1
     fi
 
     # GreatSPN
     if [ ! -f "$LOGS/$model.gspn" ]; then
-	$LIMITS $DSPN -load model -pbasis -tbasis > $LOGS/$model.gspn 2>&1
+        $LIMITS "$DSPN" -load model $GSPN_FLAG \
+            > "$LOGS/$model.gspn" 2>&1
     fi
 done
 
-cd $ROOT
+cd "$ROOT"
