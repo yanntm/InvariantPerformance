@@ -5,17 +5,17 @@
 # Tina
 mkdir -p tina
 pushd tina
-if [ ! -f "tina-3.8.0-amd64-linux.tgz" ]; then
+if [ ! -f "tina-3.8.5-amd64-linux.tgz" ]; then
     # we only need the struct binary, but in regular AND large versions:
     # 4ti2 assumed installed
-    wget https://projects.laas.fr/tina/binaries/tina-3.8.0-large-amd64-linux.tgz
-    wget https://projects.laas.fr/tina/binaries/tina-3.8.0-amd64-linux.tgz
-    tar xvzf tina-3.8.0-large-amd64-linux.tgz tina-3.8.0/bin/struct
-    mv tina-3.8.0/bin/struct tina-3.8.0/bin/struct_large
-    tar xvzf tina-3.8.0-amd64-linux.tgz tina-3.8.0/bin/struct
+    wget https://projects.laas.fr/tina/binaries/tina-3.8.5-large-amd64-linux.tgz
+    wget https://projects.laas.fr/tina/binaries/tina-3.8.5-amd64-linux.tgz
+    tar xvzf tina-3.8.5-large-amd64-linux.tgz tina-3.8.5/bin/struct
+    mv tina-3.8.5/bin/struct tina-3.8.5/bin/struct_large
+    tar xvzf tina-3.8.5-amd64-linux.tgz tina-3.8.5/bin/struct
 fi
-export STRUCT=$PWD/tina-3.8.0/bin/struct
-export STRUCTLARGE=$PWD/tina-3.8.0/bin/struct_large
+export STRUCT=$PWD/tina-3.8.5/bin/struct
+export STRUCTLARGE=$PWD/tina-3.8.5/bin/struct_large
 popd
 
 # GreatSPN
