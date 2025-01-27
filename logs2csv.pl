@@ -13,7 +13,7 @@ foreach my $file (@files) {
         my $tool = "PetriSpot$1";
         $model =~ s/\.petri(32|64|128)//g;
         my $status = "UNK";
-        my $ptime = -1, my $ttime = -1, my $constp = 0, my $nbp = -1, my $nbt = -1, my $tottime = -1, my $tmem = -1;
+        my $ptime = -1, my $ttime = -1, my $constp = 0, my $nbp = 0, my $nbt = 0, my $tottime = -1, my $tmem = -1;
         my $timecmd = -1;
         my $colp = -1, my $colt = -1;
         my $cardp = -1, my $cardt = -1, my $carda = -1;
@@ -69,7 +69,7 @@ foreach my $file (@files) {
         print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }
 }
-
+  
 
 
 
@@ -80,9 +80,9 @@ foreach my $file (@files) {
 	#print "looking at file : $file";
 	my $model=$file;
 	$model =~ s/\.its//g ;
-	my $tool="itstools";
+	my $tool="ItsTools";
 	my $status="UNK";
-	my $ptime=-1, my $ttime=-1, my $constp=0, my $nbp=-1, my $nbt=-1, my $tottime=-1, my $tmem=-1;
+	my $ptime=-1, my $ttime=-1, my $constp=0, my $nbp=0, my $nbt=0, my $tottime=-1, my $tmem=-1;
 	my $timecmd=-1;
 	my $colp=-1,my $colt=-1;
 	my $cardp=-1,my $cardt=-1,my$carda=-1;
@@ -140,7 +140,7 @@ foreach my $file (@files) {
 	    $status .= "_OF";
 	}
 	close IN;
-	print "$model,itstools,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
+	print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
     }
 }   
 
@@ -180,7 +180,7 @@ foreach my $file (@files) {
 		} else {
 		    $nbt=0;
 		}
-	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
+ 	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
 		if ($nbp == -1) {
 		    next;
 		} elsif ($nbp != -1 && $nbt == -1) {
@@ -211,7 +211,7 @@ foreach my $file (@files) {
 		    $timecmd = 60000*$1 + $2*1000 + $3;
 		}
 	    } else {
-		#	print "nomatch: $line\n";
+	#	print "nomatch: $line\n";
 	    }
 	}
 	if ($of==1) {
@@ -287,7 +287,7 @@ foreach my $file (@files) {
 		    $timecmd = 60000*$1 + $2*1000 + $3;
 		}
 	    } else {
-		#	print "nomatch: $line\n";
+	#	print "nomatch: $line\n";
 	    }
 	}
 	if ($of==1) {
@@ -298,7 +298,6 @@ foreach my $file (@files) {
     }
 }   
 
-
 @files = <*gspn>;
 foreach my $file (@files) {
     my $model = $file;
@@ -308,8 +307,8 @@ foreach my $file (@files) {
     my ($ptime, $ttime, $constp, $nbp, $nbt, $tottime, $timecmd, $tmem) = (-1, -1, 0, -1, -1, -1, -1, -1);
     my ($cardp, $cardt, $carda) = (-1, -1, -1);
     $carda = 0;  # The log does not provide arc information
-
     open my $fh, '<', $file or die "Could not open file '$file' $!";
+    my $of=0;
     while (my $line = <$fh>) {
         chomp $line;
         if ($line =~ /PLACES:\s+(\d+)/) {
@@ -320,7 +319,13 @@ foreach my $file (@files) {
             $nbp = $1;
         } elsif ($line =~ /FOUND (\d+) VECTORS IN THE TRANSITION FLOW BASIS/) {
             $nbt = $1;
-        } elsif ($line =~ /TOTAL TIME: \[User (\d+\.\d+)s, Sys (\d+\.\d+)s\]/) {
+	} elsif ($line =~ /TIME LIMIT/) {
+	    $timecmd=120000;
+	    $status="TO";
+	    next;
+	} elsif ($line =~ /overflow/) {
+	    $of = 1;
+	} elsif ($line =~ /TOTAL TIME: \[User (\d+\.\d+)s, Sys (\d+\.\d+)s\]/) {
             my $user_time = $1;
             my $sys_time = $2;
             if ($ptime == -1) {
@@ -328,6 +333,10 @@ foreach my $file (@files) {
             } else {
                 $ttime = ($user_time + $sys_time) * 1000.0;  # Convert to milliseconds
             }
+	    if ($ptime != -1 && $ttime != -1) {
+		$status="OK";
+		next;
+	    }
         } elsif ($line =~ /(\d+\.\d+)user\s+(\d+\.\d+)system\s+(\d+):(\d+)\.(\d+)elapsed/) {
             my $user = $1;
             my $system = $2;
@@ -343,7 +352,11 @@ foreach my $file (@files) {
     close $fh;
 
     $tottime = $ptime + $ttime;  # Sum of PTime and TTime
-    $status = "OK" if $ptime != -1 && $ttime != -1;
+    if ($of==1) {
+	$status .= "_OF";
+    }
 
     print "$model,$tool,$cardp,$cardt,$carda,$ptime,$ttime,$constp,$nbp,$nbt,$tottime,$timecmd,$tmem,$status\n";
 }
+
+
