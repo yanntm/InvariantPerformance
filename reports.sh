@@ -1,22 +1,20 @@
 #!/bin/bash
 
-# slices invar in <thres>.csv fail.csv files
+# usage (from logs dir):   ../reports.sh
+# only requires invar.csv, builds it if absent
+# partitions invar.csv into <thres>.csv fail.csv files
+# beware: removes all csv file except invar.csv, at start and on completion
 
-
-# with Its:
+# all known:
 tools="GreatSPN ItsTools PetriSpot32 PetriSpot64 PetriSpot128 tina tina4ti2"
-# without:
+# adjust at your wish:
 tools="GreatSPN PetriSpot32 PetriSpot64 PetriSpot128 tina tina4ti2"
 
+# adjust at your wish (last threshold must be "max")
 thresholds='100 200 500 1000 2000 5000 10000 20000 50000 max'
 
 
-
 function dispatch {
-    rm -f fail.csv
-    for thres in $thresholds
-    do rm -f $thres.csv
-    done
     for f in `ls $1`
     do
 	model=$1/$f/model.pnml
@@ -46,8 +44,6 @@ function dispatch {
 		    then z=$t
 		    else z=$p
 		    fi
-		    # classify models in .mod files
-		    # could classify directly in csv 
 		    prev=0
 		    for thres in $thresholds
 		    do  
@@ -65,116 +61,102 @@ function dispatch {
 	    *);;
 	esac
     done
-
     echo 
 }
 
-
-
-function results {
-    if [ ! -z "$1" ] && [ "$1" == C ]
-    then mode=C
-    else mode=S
-    fi
-    if [ "$mode" == S ]
-    then
-
-	# "per slices" version    
+function perslices {
+    # "per slices" version    
+    echo
+    echo
+    prev=0
+    for slice in $thresholds
+    do
 	echo
+	echo "slice = ]$prev,$slice]"
+	prev=$slice
 	echo
-	prev=0
-	for slice in 100 200 500 1000 2000 5000 10000 20000 50000 max
-	do
-	    echo
-	    echo "slice = ]$prev,$slice]"
-	    prev=$slice
-	    echo
-	    echo "| Tool | Failure | time | ovf | mem | unk | Success | Total |"
-	    echo "|---|---|---|---|---|---|---|---|"
-	    for tool in $tools
-	    do
-		tot=`grep "$tool," $slice.csv | wc -l`
-		succ=`grep "$tool," $slice.csv | grep 'OK$' | wc -l`
-		time=`grep "$tool," $slice.csv | grep TO | wc -l`
-		ovf=`grep "$tool," $slice.csv | grep OF | wc -l`
-		mem=`grep "$tool," $slice.csv | grep MO | grep -v OF | wc -l`
-		unk=`grep "$tool," $slice.csv | grep 'UNK$' | wc -l`
-		fail=$(( tot - succ ))
-		echo "| $tool | $fail | $time | $ovf | $mem | $unk | $succ | $tot |"
-	    done
-	done
-
-    else
-
-	# cumulative version using associative arrays
-	declare -A prevfail
-	declare -A prevsucc
-	declare -A prevtime
-	declare -A prevovf
-	declare -A prevmem
-	declare -A prevunk
-	declare -A prevtot
-
+	echo "| Tool | Failure | time | ovf | mem | unk | Success | Total |"
+	echo "|---|---|---|---|---|---|---|---|"
 	for tool in $tools
 	do
-	    prevfail[$tool]=0
-	    prevsucc[$tool]=0
-	    prevtime[$tool]=0
-            prevovf[$tool]=0
-            prevmem[$tool]=0
-            prevunk[$tool]=0
-	    prevtot[$tool]=0
+	    tot=`grep "$tool," $slice.csv | wc -l`
+	    succ=`grep "$tool," $slice.csv | grep 'OK$' | wc -l`
+	    time=`grep "$tool," $slice.csv | grep TO | wc -l`
+	    ovf=`grep "$tool," $slice.csv | grep OF | wc -l`
+	    mem=`grep "$tool," $slice.csv | grep MO | grep -v OF | wc -l`
+	    unk=`grep "$tool," $slice.csv | grep 'UNK$' | wc -l`
+	    fail=$(( tot - succ ))
+	    echo "| $tool | $fail | $time | $ovf | $mem | $unk | $succ | $tot |"
 	done
-
-	for slice in 100 200 500 1000 2000 5000 10000 20000 50000 max
-	do echo
-	   echo "slice = ]0,$slice] "
-	   echo
-	   echo "| Tool | Failure | time | ovf | mem | unk | Success | Total |"
-	   echo "|---|---|---|---|---|---|---|---|"
-	   for tool in $tools
-	   do
-	       prevtot=${prevtot[$tool]}
-	       prevsucc=${prevsucc[$tool]}
-	       prevtime=${prevtime[$tool]}
-	       prevovf=${prevovf[$tool]}
-	       prevmem=${prevmem[$tool]}
-	       prevunk=${prevunk[$tool]}
-	       prevfail=${prevfail[$tool]}
-
-	       tot=`grep "$tool," $slice.csv | wc -l`
-	       tot=$(( tot + prevtot ))
-	       succ=`grep "$tool," $slice.csv | grep 'OK$' | wc -l`
-	       succ=$(( succ + prevsucc ))
-
-	       time=`grep "$tool," $slice.csv | grep TO | wc -l`
-	       time=$(( time + prevtime ))
-	       ovf=`grep "$tool," $slice.csv | grep OF | wc -l`
-	       ovf=$(( ovf + prevovf ))
-	       mem=`grep "$tool," $slice.csv | grep MO | grep -v OF | wc -l`
-	       mem=$(( mem + prevmem ))
-	       unk=`grep "$tool," $slice.csv | grep 'UNK$' | wc -l`
-	       unk=$(( unk + prevunk ))
-	       fail=$(( tot - succ ))
-	       echo "| $tool | $fail | $time | $ovf | $mem | $unk | $succ | $tot |"
-
-	       prevfail[$tool]=$fail
-	       prevsucc[$tool]=$succ
-	       prevtime[$tool]=$time
-	       prevovf[$tool]=$ovf
-	       prevmem[$tool]=$mem
-	       prevunk[$tool]=$unk
-	       prevtot[$tool]=$tot
-	   done
-	done
-    fi
+    done
 }
 
+function cumulated {
+    # cumulative version using associative arrays
+    # declare/initialize arrays:
+    declare -A prevfail
+    declare -A prevsucc
+    declare -A prevtime
+    declare -A prevovf
+    declare -A prevmem
+    declare -A prevunk
+    declare -A prevtot
+    for tool in $tools
+    do
+	prevfail[$tool]=0
+	prevsucc[$tool]=0
+	prevtime[$tool]=0
+        prevovf[$tool]=0
+        prevmem[$tool]=0
+        prevunk[$tool]=0
+	prevtot[$tool]=0
+    done
+    
+    # print results for each slice:
+    for slice in $thresholds
+    do echo
+       echo "slice = ]0,$slice] "
+       echo
+       echo "| Tool | Failure | time | ovf | mem | unk | Success | Total |"
+       echo "|---|---|---|---|---|---|---|---|"
+       for tool in $tools
+       do
+	   prevtot=${prevtot[$tool]}
+	   prevsucc=${prevsucc[$tool]}
+	   prevtime=${prevtime[$tool]}
+	   prevovf=${prevovf[$tool]}
+	   prevmem=${prevmem[$tool]}
+	   prevunk=${prevunk[$tool]}
+	   prevfail=${prevfail[$tool]}
 
+	   tot=`grep "$tool," $slice.csv | wc -l`
+	   tot=$(( tot + prevtot ))
+	   succ=`grep "$tool," $slice.csv | grep 'OK$' | wc -l`
+	   succ=$(( succ + prevsucc ))
+
+	   time=`grep "$tool," $slice.csv | grep TO | wc -l`
+	   time=$(( time + prevtime ))
+	   ovf=`grep "$tool," $slice.csv | grep OF | wc -l`
+	   ovf=$(( ovf + prevovf ))
+	   mem=`grep "$tool," $slice.csv | grep MO | grep -v OF | wc -l`
+	   mem=$(( mem + prevmem ))
+	   unk=`grep "$tool," $slice.csv | grep 'UNK$' | wc -l`
+	   unk=$(( unk + prevunk ))
+	   fail=$(( tot - succ ))
+	   echo "| $tool | $fail | $time | $ovf | $mem | $unk | $succ | $tot |"
+
+	   prevfail[$tool]=$fail
+	   prevsucc[$tool]=$succ
+	   prevtime[$tool]=$time
+	   prevovf[$tool]=$ovf
+	   prevmem[$tool]=$mem
+	   prevunk[$tool]=$unk
+	   prevtot[$tool]=$tot
+       done
+    done
+}
 
 function summary {
-    echo
-    echo
     echo summary
     echo
     echo "| Tool | Failure | time | ovf | mem | unk | Success | Total |"
@@ -192,57 +174,53 @@ function summary {
     done
 }
 
+function preclean {
+    # removes all md and csv files except invar.csv
+    rm -f `ls *.md *.csv 2> /dev/null | grep -v invar`
+}
+
+function postclean {
+    # removes all csv files except invar.csv
+    rm -f `ls *.csv 2> /dev/null | grep -v invar`
+}
 
 
-export PERL_BADLANG=0
+function main {
+    # avoids missing locales messages by perl
+    export PERL_BADLANG=0
 
-if [ ! -f invar.csv ]
-then echo creating invar.csv
-     ../logs2csv.pl > invar.csv 
-fi
+    # clean in case some csv files 
+    preclean
 
-# sliced reports:
+    # build invar.csv if absent
+    if [ ! -f invar.csv ]
+    then 
+	echo creating invar.csv
+	../logs2csv.pl > invar.csv
+    fi
 
-# create *.csv slices
-echo dispatching invar.csv
-dispatch ../pnmcc-models-2023/INPUTS/
-echo csv slices created
+    # summary of results
+    summary >> summary.md
+    echo summary.md created
 
-# create md reports
-results S > report-s.md
-echo report-s.md created
-results C > report-c.md
-echo report-c.md created
-summary >> summary.md
-echo summary.md created
+    # sliced reports:
 
-# cleaning
-echo cleaning
-rm *0.csv max.csv
-echo done
+    # create *.csv slices
+    echo dispatching invar.csv
+    dispatch ../pnmcc-models-2023/INPUTS/
+    echo csv slices created
 
+    # create md reports
+    perslices > report-s.md
+    echo report-s.md created
+    cumulated > report-c.md
+    echo report-c.md created
 
+    # cleaning
+    echo cleaning
+    postclean
+    echo done
+}
 
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+main
 
