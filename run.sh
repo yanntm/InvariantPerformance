@@ -68,12 +68,13 @@ chmod a+x $TIMEOUT
 
 # Step 2: Download models and prepare them
 
-if [ ! -d "pnmcc-models-2023" ]; then
-    git clone --depth 1 --branch gh-pages https://github.com/yanntm/pnmcc-models-2023.git
+if [ ! -d "INPUTS/" ]; then
+    wget --progress=dot:mega https://mcc.lip6.fr/2024/archives/INPUTS-2024.tar.gz
+    tar xzf INPUTS-2024.tar.gz
 fi
 
 export ROOT=$PWD
-export MODELDIR=$PWD/pnmcc-models-2023/INPUTS/
+export MODELDIR=$PWD/INPUTS/
 
 pushd $MODELDIR
 
