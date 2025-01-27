@@ -37,7 +37,7 @@ function dispatch {
 		done < block
 		rm block
 		if (( "$p" < 0 ))
-		then grep $name invar.csv >> fail.csv
+		then grep $name invar.csv >> missing.csv
 		else
 		    # z is max of p,t
 		    if (( "$p" <= "$t" ))

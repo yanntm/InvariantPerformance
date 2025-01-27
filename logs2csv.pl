@@ -13,7 +13,7 @@ foreach my $file (@files) {
         my $tool = "PetriSpot$1";
         $model =~ s/\.petri(32|64|128)//g;
         my $status = "UNK";
-        my $ptime = -1, my $ttime = -1, my $constp = 0, my $nbp = 0, my $nbt = 0, my $tottime = -1, my $tmem = -1;
+        my $ptime = -1, my $ttime = -1, my $constp = 0, my $nbp=-1, my $nbt=-1, my $tottime = -1, my $tmem = -1;
         my $timecmd = -1;
         my $colp = -1, my $colt = -1;
         my $cardp = -1, my $cardt = -1, my $carda = -1;
@@ -82,7 +82,7 @@ foreach my $file (@files) {
 	$model =~ s/\.its//g ;
 	my $tool="ItsTools";
 	my $status="UNK";
-	my $ptime=-1, my $ttime=-1, my $constp=0, my $nbp=0, my $nbt=0, my $tottime=-1, my $tmem=-1;
+	my $ptime=-1, my $ttime=-1, my $constp=0, my $nbp=-1, my $nbt=-1, my $tottime=-1, my $tmem=-1;
 	my $timecmd=-1;
 	my $colp=-1,my $colt=-1;
 	my $cardp=-1,my $cardt=-1,my$carda=-1;
@@ -191,8 +191,6 @@ foreach my $file (@files) {
 		}
 		next;
 	    } elsif ($line =~ /overflow/) {
-		# probably this :
-		# unexpected failure (overflow ?), please retry with flag -mp
 		$of = 1;
 	    } elsif ($line =~ /TIME LIMIT/) {
 		$timecmd=120000;
@@ -274,8 +272,6 @@ foreach my $file (@files) {
 		$status="MOVF";
 		next;
 	    } elsif ($line =~ /overflow/) {
-		# probably this :
-		# unexpected failure (overflow ?), please retry with flag -mp
 		$of = 1;
 	    } elsif ($line =~ /Command exited with non-zero status/) {
 		$status="MOVF";
