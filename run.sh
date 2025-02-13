@@ -225,6 +225,8 @@ for model_dir in "$MODELDIR"/*/; do
     if contains_tool tina4ti2; then
       if [ ! -f "$LOGS/$model.struct" ]; then
           rm -f /tmp/f-* > /dev/null 2>&1
+          # add 4ti2 to path
+          export PATH=$ROOT/bin:$PATH
           if [ -f large_marking ]; then
               $LIMITS "$STRUCTLARGE" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I -q "$model_dir/model.pnml" \
                   > "$LOGS/$model.struct" 2>&1
