@@ -36,6 +36,6 @@ OAR_CONSTRAINTS='{(host like "big25") OR (host like "big26")}/nodes=1/core=4,wal
 for MODE in "${MODES[@]}"; do
   for TOOL in "${TOOLS[@]}"; do
     echo "Submitting OAR job for Mode: $MODE, Tool: $TOOL"
-    oarsub -l "$OAR_CONSTRAINTS" "uname -a; cd $WORKDIR && ./run.sh $MODE --tools=$TOOL; exit"
+    oarsub -l "$OAR_CONSTRAINTS" "uname -a; cd $WORKDIR && ./run.sh $MODE --tools=$TOOL --mem=ANY; exit"
   done
 done
