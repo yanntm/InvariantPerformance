@@ -14,21 +14,47 @@ The current repository is easier to use, compares more tools, and uses MCC 2023 
 
 ## How to Reproduce
 
-1. **Clone the Repository:**
+0. **Clone the Repository:**
    ```bash
    git clone https://github.com/yanntm/InvariantPerformance.git
    cd InvariantPerformance
    ```
 
-2. **Run the Experiment:**
-   Execute the `run.sh` script to automate the entire process:
+1. **Deploy tools and models:**
+  This step will download the tools, the models, and translate PNML models to GreatSPN format, preparing the experiments.
+  It builds a `config.sh` script that contains the configuration used by `run.sh`.
    ```bash
-   ./run.sh
+   ./deploy.sh
    ```
-   This script performs the following tasks:
-   * Downloads the necessary tools (versions are specified in the script; logs correspond to Tina 3.8.0, GreatSPN MCC 2022 release, ITS-Tools 202405141337, PetriSpot at this [revision](https://github.com/yanntm/PetriSpot/commit/7b8898f36256cad5382452f03952d08db6605a42)).
-   * Downloads and prepares models from [pnmcc-models-2023](https://github.com/yanntm/pnmcc-models-2023), and builds GreatSPN format files from PNML. We also clear COL models since they are not uniformly supported by tools.
-   * Runs each tool on each model, configured to compute a generative basis of P flows and T flows (precise invocation flags in `run.sh` script). We limit memory to 16GB and time to 120 seconds wall clock time (none of the tools are concurrent).
+
+2. **Run the Experiment:**
+
+   Execute the `run.sh` script to automate the entire process. The script now accepts an optional `--tools` parameter to select a subset of tools. For example:
+   ```bash
+   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64
+   ```
+   If the `--tools` parameter is omitted, all tools are executed.
+
+   **Arguments:**
+   - **MODE**: Must be one of:
+     - `FLOWS`
+     - `SEMIFLOWS`
+     - `TFLOWS`
+     - `PFLOWS`
+     - `TSEMIFLOWS`
+     - `PSEMIFLOWS`
+     
+   - **--tools** (optional): A comma-separated list specifying which tools to run. Valid tool names and their meanings:
+     - `tina`: Tina struct component (LAAS, CNRS)
+     - `tina4ti2`: Tina with 4ti2 integration (LAAS, CNRS)
+     - `itstools`: ITS-Tools (LIP6, Sorbonne Université)
+     - `petri32`: PetriSpot in 32-bit mode (LIP6, Sorbonne Université)
+     - `petri64`: PetriSpot in 64-bit mode (LIP6, Sorbonne Université)
+     - `petri128`: PetriSpot in 128-bit mode (LIP6, Sorbonne Université)
+     - `gspn`: GreatSPN (Università di Torino)
+
+   If run without any arguments or with `-h/--help`, the script prints a detailed usage message.
+
 
 3. **Log Generation:**
    Logs for each tool are produced in the `logs/` directory, with file extensions specific to each tool (e.g., `.its`, `.tina`, `.petri32`, etc.).
