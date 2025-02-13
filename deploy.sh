@@ -96,9 +96,12 @@ for i in *.tgz; do
         # Remove unnecessary files
         rm -f *.xml *.txt
         # Convert PNML to GreatSPN format (.def/.net)
+        set +e
         $GSOL -use-pnml-ids "$PWD/model.pnml" -export-greatspn "$PWD/model"
+        status=$?
+        set -e
         if [[ ! -f model.def ]]; then
-            echo "Warning: Conversion failed in $PWD"
+            echo "Warning: Conversion failed in $PWD (status: $status)" >&2
             rm -f model.net model.def
         fi
         cd ..
