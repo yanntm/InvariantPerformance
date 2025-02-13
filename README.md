@@ -8,7 +8,7 @@ Currently, the repository compares the following tools:
 * [PetriSpot](https://github.com/yanntm/PetriSpot)
 * [GreatSPN](https://github.com/greatspn/SOURCES)
 
-This repository was originally built as a companion to the paper ["Efficient Strategies to Compute Invariants, Bounds and Stable Places of Petri nets" by Yann Thierry-Mieg, PNSE'23](https://hal.science/hal-04142675); the data and scripts used to build the analysis and plots in that paper are still visible [here](https://github.com/yanntm/InvariantPerformance/tree/PNSE23) or as a release (side panel). Slides of the presentation are also available [here](https://github.com/yanntm/InvariantPerformance/blob/master/PNSE23_vfinal.pdf).
+This repository was originally built as a companion to the paper ["Efficient Strategies to Compute Invariants, Bounds and Stable Places of Petri nets" by Yann Thierry-Mieg, PNSE'23](https://hal.science/hal-04142675); the data and scripts used to build the analysis and plots in that paper are still visible [here](https://github.com/yanntm/InvariantPerformance/tree/PNSE23) or as a release (side panel). Slides of the presentation are also available [here](https://github.com/yanntm/InvariantPerformance/blob/master/docs/PNSE23_vfinal.pdf).
 
 The current repository is easier to use, compares more tools, and uses MCC 2023 models.
 
@@ -101,7 +101,7 @@ Caveat :
    Rscript multiCompare.R
    ```
    
-The python builds a pdf [analysis_report.pdf](./analysis_report.pdf) some distributions as box plots, some comparisons using cactus plots, as well as tables of results such as this one.   
+The python builds a pdf [analysis_report.pdf](./docs/analysis_report.pdf) some distributions as box plots, some comparisons using cactus plots, as well as tables of results such as this one.   
 
 | Tool         | Failure | Success | Total |
 |--------------|---------|---------|-------|
@@ -113,7 +113,7 @@ The python builds a pdf [analysis_report.pdf](./analysis_report.pdf) some distri
 | tina         | 504     | 920     | 1424  |
 | tina4ti2     | 256     | 1168    | 1424  |
 
-The R compares each pair of tools using scatter plots in time and memory and builds a pdf [Tool_Comparisons.pdf](./Tool_Comparisons.pdf).
+The R compares each pair of tools using scatter plots in time and memory and builds a pdf [Tool_Comparisons.pdf](./docs/Tool_Comparisons.pdf).
 Each point is a model, so each plot contains 1424 points. Scales are log/log.
 It also builds summary tables like this one.
 
