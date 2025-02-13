@@ -20,8 +20,6 @@
 #   ./run.sh FLOWS
 #   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64
 
-set -e
-
 print_usage() {
     cat <<EOF
 Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn]

@@ -22,8 +22,6 @@
 #   /home/ythierry/git/InvariantPerformance
 # (This folder contains run.sh and config.sh; deploy.sh has been run ahead of time)
 
-set -e
-
 WORKDIR="/home/ythierry/git/InvariantPerformance"
 
 # New modes to run
