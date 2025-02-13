@@ -13,7 +13,6 @@ mkdir -p tina
 pushd tina > /dev/null
 if [ ! -f "tina-3.8.5-amd64-linux.tgz" ]; then
     # we only need the struct binary, but in regular AND large versions:
-    # 4ti2 assumed installed
     wget https://projects.laas.fr/tina/binaries/tina-3.8.5-large-amd64-linux.tgz
     wget https://projects.laas.fr/tina/binaries/tina-3.8.5-amd64-linux.tgz
     tar xvzf tina-3.8.5-large-amd64-linux.tgz tina-3.8.5/bin/struct
@@ -24,6 +23,13 @@ export STRUCT="$PWD/tina-3.8.5/bin/struct"
 export STRUCTLARGE="$PWD/tina-3.8.5/bin/struct_large"
 popd > /dev/null
 
+if [ ! -x "bin/4ti2int64" ]; then 
+  mkdir -p bin
+  cd bin
+  wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/4ti2int64
+  chmod a+x 4ti2int64
+fi  
+  
 # GreatSPN
 mkdir -p greatspn
 pushd greatspn > /dev/null
