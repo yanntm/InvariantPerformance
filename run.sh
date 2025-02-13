@@ -106,28 +106,60 @@ popd
 # Step 3: Run the tools
 # Check argument count
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [FLOWS|SEMIFLOWS]"
+  echo "Usage: $0 [FLOWS|SEMIFLOWS|TFLOWS|PFLOWS|TSEMIFLOWS|PSEMIFLOWS]"
   exit 1
 fi
 
 MODE=$1
 
-if [ "$MODE" = "FLOWS" ]; then
+case "$MODE" in
+  FLOWS)
     TINA_FLAG="-F"
     ITS_FLAG="--Pflows --Tflows"
     PETRISPOT_FLAG="--Pflows --Tflows"
     GSPN_FLAG="-pbasis -tbasis"
     LOGDIR="logs"
-elif [ "$MODE" = "SEMIFLOWS" ]; then
+    ;;
+  SEMIFLOWS)
     TINA_FLAG="-S"
     ITS_FLAG="--Psemiflows --Tsemiflows"
     PETRISPOT_FLAG="--Psemiflows --Tsemiflows"
     GSPN_FLAG="-pinv -tinv"
     LOGDIR="semilogs"
-else
-    echo "Usage: $0 [FLOWS|SEMIFLOWS]"
+    ;;
+  TFLOWS)
+    TINA_FLAG="-F -T"
+    ITS_FLAG="--Tflows"
+    PETRISPOT_FLAG="--Tflows"
+    GSPN_FLAG="-tbasis"
+    LOGDIR="logs_tflows"
+    ;;
+  PFLOWS)
+    TINA_FLAG="-F -P"
+    ITS_FLAG="--Pflows"
+    PETRISPOT_FLAG="--Pflows"
+    GSPN_FLAG="-pbasis"
+    LOGDIR="logs_pflows"
+    ;;
+  TSEMIFLOWS)
+    TINA_FLAG="-S -T"
+    ITS_FLAG="--Tsemiflows"
+    PETRISPOT_FLAG="--Tsemiflows"
+    GSPN_FLAG="-tinv"
+    LOGDIR="logs_tsemiflows"
+    ;;
+  PSEMIFLOWS)
+    TINA_FLAG="-S -P"
+    ITS_FLAG="--Psemiflows"
+    PETRISPOT_FLAG="--Psemiflows"
+    GSPN_FLAG="-pinv"
+    LOGDIR="logs_psemiflows"
+    ;;
+  *)
+    echo "Usage: $0 [FLOWS|SEMIFLOWS|TFLOWS|PFLOWS|TSEMIFLOWS|PSEMIFLOWS]"
     exit 1
-fi
+    ;;
+esac
 
 export LIMITS="$TIMEOUT 120 time systemd-run --scope -p MemoryMax=16G --user"
 cd "$ROOT"
