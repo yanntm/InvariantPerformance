@@ -2,7 +2,7 @@
 # run.sh: Run performance tests on models for a given mode and a selected set of tools.
 #
 # Usage:
-#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn]
+#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE]
 #
 # MODE must be one of:
 #   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -16,13 +16,18 @@
 #   petri128   : PetriSpot in 128-bit mode (LIP6, Sorbonne Université)
 #   gspn       : GreatSPN (Università di Torino)
 #
+# --mem=VALUE:
+#   Set memory limit for systemd-run.
+#   Default is "16G". Use "ANY" to disable the memory limit.
+#
 # Examples:
 #   ./run.sh FLOWS
 #   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64
+#   ./run.sh PFLOWS --mem=ANY
 
 print_usage() {
     cat <<EOF
-Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn]
+Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE]
 
 MODE must be one of:
   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -36,9 +41,14 @@ Tool names and their meanings:
   petri128   : PetriSpot in 128-bit mode (LIP6, Sorbonne Université)
   gspn       : GreatSPN (Università di Torino)
 
+--mem=VALUE:
+  Set memory limit for systemd-run.
+  Default is "16G". Use "ANY" to disable memory limit.
+
 Examples:
   $0 FLOWS
   $0 PSEMIFLOWS --tools=tina4ti2,petri64
+  $0 PFLOWS --mem=ANY
 EOF
 }
 
@@ -78,11 +88,15 @@ shift
 
 # Default: run all tools
 TOOLS_TO_RUN="tina,tina4ti2,itstools,petri32,petri64,petri128,gspn"
+MEM_LIMIT="16G"
 
 for arg in "$@"; do
   case "$arg" in
     --tools=*)
       TOOLS_TO_RUN="${arg#*=}"
+      ;;
+    -mem=*|--mem=*)
+      MEM_LIMIT="${arg#*=}"
       ;;
     -h|--help)
       print_usage
@@ -113,6 +127,13 @@ for tool in "${selected_tools[@]}"; do
         exit 1
     fi
 done
+
+# Set memory limits based on MEM_LIMIT flag.
+if [ "$MEM_LIMIT" = "ANY" ]; then
+    export LIMITS="$TIMEOUT 120 time"
+else
+    export LIMITS="$TIMEOUT 120 time systemd-run --scope -p MemoryMax=$MEM_LIMIT --user"
+fi
 
 # --- Set Mode-Specific Flags ---
 case "$MODE" in
@@ -165,7 +186,6 @@ case "$MODE" in
     ;;
 esac
 
-export LIMITS="$TIMEOUT 120 time systemd-run --scope -p MemoryMax=16G --user"
 mkdir -p "$LOGDIR"
 export LOGS="$PWD/$LOGDIR"
 
