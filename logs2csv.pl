@@ -32,6 +32,14 @@ foreach my $file (@files) {
                 $nbt = $1;
                 $ttime = $2;
                 next;
+            } elsif ($line =~ /Computed (\d+) P\s+semiflows in (\d+) ms/) {
+                $nbp = $1;
+                $ptime = $2;
+                next;
+            } elsif ($line =~ /Computed (\d+) T\s+semiflows in (\d+) ms/) {
+                $nbt = $1;
+                $ttime = $2;
+                next;
             } elsif ($line =~ /Invariants computation overflowed/) {
                 if ($ptime == -1) {
                     $ofp = 1;
@@ -180,6 +188,18 @@ foreach my $file (@files) {
 		} else {
 		    $nbt=0;
 		}
+	    } elsif ($line =~ /(\d+) semiflow\(s\)/) {
+		if ($nbp == -1) {
+		    $nbp=$1;
+		} else {
+		    $nbt=$1;
+		}
+	    } elsif ($line =~ /no semiflow\(s\)/) {
+		if ($nbp == -1) {
+		    $nbp=0;
+		} else {
+		    $nbt=0;
+		}
  	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
 		if ($nbp == -1) {
 		    next;
@@ -254,6 +274,18 @@ foreach my $file (@files) {
 		} else {
 		    $nbt=0;
 		}
+		} elsif ($line =~ /(\d+) semiflow\(s\)/) {
+		if ($nbp == -1) {
+		    $nbp=$1;
+		} else {
+		    $nbt=$1;
+		}
+	    } elsif ($line =~ /no semiflow\(s\)/) {
+		if ($nbp == -1) {
+		    $nbp=0;
+		} else {
+		    $nbt=0;
+		}
   	    } elsif ($line =~ /^(\d+\.\d+)s$/) {
 		if ($nbp == -1) {
 		    next;
@@ -314,6 +346,10 @@ foreach my $file (@files) {
         } elsif ($line =~ /FOUND (\d+) VECTORS IN THE PLACE FLOW BASIS/) {
             $nbp = $1;
         } elsif ($line =~ /FOUND (\d+) VECTORS IN THE TRANSITION FLOW BASIS/) {
+            $nbt = $1;
+        } elsif ($line =~ /FOUND (\d+) PLACE SEMIFLOWS/) {
+            $nbp = $1;
+        } elsif ($line =~ /FOUND (\d+) TRANSITION SEMIFLOWS/) {
             $nbt = $1;
 	} elsif ($line =~ /TIME LIMIT/) {
 	    $timecmd=120000;
