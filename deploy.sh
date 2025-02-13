@@ -28,6 +28,7 @@ if [ ! -x "bin/4ti2int64" ]; then
   cd bin
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/4ti2int64
   chmod a+x 4ti2int64
+  cd ..
 fi  
   
 # GreatSPN
