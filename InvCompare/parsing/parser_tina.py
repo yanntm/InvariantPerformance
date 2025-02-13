@@ -14,7 +14,6 @@ FLOW_LINE_PATTERN = re.compile(r'^(.*?)\s*\((\-?\d+)\)\s*$')
 
 # Regex to match a "variable*coeff" or "variable" chunk
 #   e.g. "capacity_c0*-1", "resource_c1*-4", "capacity_c1", "p72"
-# Group(1) = varName, Group(2) = optional sign & digits
 VAR_PATTERN = re.compile(r'^([^()]+?)(?:\*(\-?\d+))?$')
 
 def parseLogTina(logPath: str, isPlaceFlow: bool = True) -> List[Invariant]:
@@ -62,7 +61,7 @@ def parseLogTina(logPath: str, isPlaceFlow: bool = True) -> List[Invariant]:
                     or "ANALYSIS COMPLETED" in line_stripped
                 ):
                     # End of relevant block
-                    invariants.extend(_parseFlowLines(relevant_lines))
+                    invariants.extend(_parseFlowLines(relevant_lines, isPlaceFlow))
                     inside_relevant_section = False
                 else:
                     # Accumulate lines (including blank lines)
@@ -70,15 +69,16 @@ def parseLogTina(logPath: str, isPlaceFlow: bool = True) -> List[Invariant]:
 
     # If we ended the file while still in the relevant section
     if inside_relevant_section and relevant_lines:
-        invariants.extend(_parseFlowLines(relevant_lines))
+        invariants.extend(_parseFlowLines(relevant_lines, isPlaceFlow))
 
     return invariants
 
-def _parseFlowLines(lines: List[str]) -> List[Invariant]:
+def _parseFlowLines(lines: List[str], isPlaceFlow: bool) -> List[Invariant]:
     """
     Parse each line in 'lines' as a single flow if it matches the pattern:
        varName varName... (const)
     ignoring lines that are empty or do not match.
+    For transition flows (isPlaceFlow == False), the constant is discarded (set to 0).
     """
     result: List[Invariant] = []
     for ln in lines:
@@ -100,6 +100,10 @@ def _parseFlowLines(lines: List[str]) -> List[Invariant]:
         except ValueError:
             # If we can't parse the constant, skip
             continue
+
+        # For transition flows, ignore the parsed constant and set it to 0.
+        if not isPlaceFlow:
+            const_val = 0
 
         # Now parse the variable part, splitting on whitespace
         var_chunks = var_part.split()
