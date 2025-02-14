@@ -110,16 +110,15 @@ foreach my $file (@files) {
 }
 
 
-
 my @files = <*its>;
-
 foreach my $file (@files) {
     if ( $file =~ /its$/ ) {  
         my $model = $file;
         $model =~ s/\.its//g;
         my $tool = "ItsTools";
         my $status = "UNK";
-        my $ptime = -1, my $ttime = -1, my $nbp = -1, my $nbt = -1, my $tottime = -1, my $tmem = -1;
+        my $ptime = -1, my $ttime = -1, my $nbp = -1, my $nbt = -1;
+        my $tottime = -1, my $tmem = -1;
         my $timecmd = -1;
         my $cardp = -1, my $cardt = -1, my $carda = -1;
         my $examination = "UNK";
@@ -140,15 +139,12 @@ foreach my $file (@files) {
         } elsif ($first_line =~ /--Tsemiflows/) {
             $examination = "TSEMIFLOWS";
         }
-        # Reset file pointer to process all lines
+        # Reset file pointer to process all lines.
         seek(IN, 0, 0);
         
         while (my $line = <IN>) {
             chomp $line;
-            if ($line =~ /Reduce places removed (\d+) places/) {
-                # Not output for ITS; just ignore
-                next;
-            } elsif ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
+			if ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
                 $nbp = $1;
                 $ptime = $2;
                 next;
@@ -194,18 +190,9 @@ foreach my $file (@files) {
             $nbt = -1;
         }
         
-        # Determine TimeInternal: if both ptime and ttime are set and differ, report them as "ptime/ttime"
-        my $time_internal;
-        if ($ptime != -1 && $ttime != -1 && $ptime != $ttime) {
-            $time_internal = "$ptime/$ttime";
-        } elsif ($ptime != -1) {
-            $time_internal = $ptime;
-        } else {
-            $time_internal = $ttime;
-        }
+        # Use the Total runtime value as TimeInternal.
+        my $time_internal = $tottime;
         
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
     }
 }
-
-
