@@ -15,8 +15,8 @@ foreach my $file (@files) {
         my $ptime = -1, my $ttime = -1, my $nbp = -1, my $nbt = -1, my $tottime = -1, my $tmem = -1;
         my $timecmd = -1;
         my $cardp = -1, my $cardt = -1, my $carda = -1;
-        my $ofp = 0, my $oft = 0;
         my $examination = "UNK";
+        my $overflow = 0;
 
         # Open the file and read the first line to determine the examination mode.
         open IN, "< $file";
@@ -39,8 +39,8 @@ foreach my $file (@files) {
 
         while (my $line = <IN>) {
             chomp $line;
-            if ($line =~ /Reduce places removed (\d+) places/) {
-                # (Originally used for ITS, not used in petrispot logs.)
+            if ($line =~ /overflow/i) {
+                $overflow = 1;
                 next;
             } elsif ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
                 $nbp = $1;
@@ -58,17 +58,11 @@ foreach my $file (@files) {
                 $nbt = $1;
                 $ttime = $2;
                 next;
-            } elsif ($line =~ /Invariants computation overflowed/) {
-                if ($ptime == -1) {
-                    $ofp = 1;
-                } else {
-                    $oft = 1;
-                }
             } elsif ($line =~ /Parsed PT model containing (\d+) places and (\d+) transitions and (\d+) arcs in (\d+) ms/) {
                 $cardp = $1;
                 $cardt = $2;
                 $carda = $3;
-                # $parsetime = $4;
+                next;
             } elsif ($line =~ /Total runtime (\d+) ms/) {
                 $tottime = $1;
                 $status = "OK";
@@ -85,15 +79,16 @@ foreach my $file (@files) {
                 }
             }
         }
-        if ($ofp == 1) {
-            $status .= "_OF";
-        }
-        if ($oft == 1) {
-            $status .= "_OF";
-        }
         close IN;
 
-        # Determine TimeInternal: if both ptime and ttime are set, report them as "ptime/ttime"
+        # If any overflow occurred, override status and invariant counts.
+        if ($overflow) {
+            $status = "OF";
+            $nbp = -1;
+            $nbt = -1;
+        }
+
+        # Determine TimeInternal: if both ptime and ttime are set and differ, show both separated by "/"
         my $time_internal;
         if ($ptime != -1 && $ttime != -1 && $ptime != $ttime) {
             $time_internal = "$ptime/$ttime";
