@@ -39,7 +39,10 @@ foreach my $file (@files) {
 
         while (my $line = <IN>) {
             chomp $line;
-            if ($line =~ /overflow/i) {
+            if ($line =~ /Reduce places removed (\d+) places/) {
+                # (Not used in petrispot logs)
+                next;
+            } elsif ($line =~ /overflow/i) {
                 $overflow = 1;
                 next;
             } elsif ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
@@ -66,6 +69,10 @@ foreach my $file (@files) {
             } elsif ($line =~ /Total runtime (\d+) ms/) {
                 $tottime = $1;
                 $status = "OK";
+                next;
+            } elsif ($line =~ /TIME LIMIT: Killed by timeout after (\d+) seconds/) {
+                $timecmd = $1 * 1000;
+                $status = "TO";
                 next;
             } elsif ($line =~ /TIME LIMIT/) {
                 $tottime = 120000;
