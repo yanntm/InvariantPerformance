@@ -266,6 +266,9 @@ foreach my $file (@files) {
                 } else {
                     $nbt = 0;
                 }
+            } elsif ($line =~ /ANALYSIS COMPLETED/) {
+                $status = "OK";
+                next;
             } elsif ($line =~ /TIME LIMIT: Killed by timeout after (\d+) seconds/) {
                 $timecmd = $1 * 1000;
                 $status = "TO";
