@@ -196,3 +196,108 @@ foreach my $file (@files) {
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
     }
 }
+
+
+my @files = (<*struct>, <*tina>);
+foreach my $file (@files) {
+    if ($file =~ /\.(struct|tina)$/) {
+        my $model = $file;
+        $model =~ s/\.(struct|tina)$//;
+        my $tool = ($file =~ /\.struct$/) ? "tina4ti2" : "tina";
+        my $status = "UNK";
+        my $nbp   = -1; 
+        my $nbt   = -1;
+        my $tmem  = -1;
+        my $timecmd = -1;
+        my $cardp = -1; 
+        my $cardt = -1; 
+        my $carda = -1;
+        my $examination = "UNK";
+        my $of = 0;
+        
+        open IN, "< $file";
+        # Determine Examination from the first line of the log.
+        my $first_line = <IN>;
+        if ($first_line =~ /-F/ and $first_line =~ /-T/) {
+            $examination = "TFLOWS";
+        } elsif ($first_line =~ /-F/ and $first_line =~ /-P/) {
+            $examination = "PFLOWS";
+        } elsif ($first_line =~ /-S/ and $first_line =~ /-T/) {
+            $examination = "TSEMIFLOWS";
+        } elsif ($first_line =~ /-S/ and $first_line =~ /-P/) {
+            $examination = "PSEMIFLOWS";
+        } elsif ($first_line =~ /-F\b/) {
+            $examination = "FLOWS";
+        } elsif ($first_line =~ /-S\b/) {
+            $examination = "SEMIFLOWS";
+        } else {
+            $examination = "UNK";
+        }
+        # Reset file pointer to process all lines.
+        seek(IN, 0, 0);
+        
+        while (my $line = <IN>) {
+            chomp $line;
+            if ($line =~ /(\d+) places, (\d+) transitions, (\d+) arcs/) {
+                $cardp = $1;
+                $cardt = $2;
+                $carda = $3;
+            } elsif ($line =~ /(\d+) flow\(s\)/) {
+                if ($nbp == -1) {
+                    $nbp = $1;
+                } else {
+                    $nbt = $1;
+                }
+            } elsif ($line =~ /no flow\(s\)/) {
+                if ($nbp == -1) {
+                    $nbp = 0;
+                } else {
+                    $nbt = 0;
+                }
+            } elsif ($line =~ /(\d+) semiflow\(s\)/) {
+                if ($nbp == -1) {
+                    $nbp = $1;
+                } else {
+                    $nbt = $1;
+                }
+            } elsif ($line =~ /no semiflow\(s\)/) {
+                if ($nbp == -1) {
+                    $nbp = 0;
+                } else {
+                    $nbt = 0;
+                }
+            } elsif ($line =~ /TIME LIMIT: Killed by timeout after (\d+) seconds/) {
+                $timecmd = $1 * 1000;
+                $status = "TO";
+                next;
+            } elsif ($line =~ /Command terminated by signal 9/) {
+                $status = "MOVF";
+                next;
+            } elsif ($line =~ /overflow/) {
+                $of = 1;
+            } elsif ($line =~ /Command exited with non-zero status/) {
+                $status = "MOVF";
+                next;
+            } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
+                $timecmd = $1;
+                $tmem = $2;
+                if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
+                    $timecmd = 60000 * $1 + $2 * 1000 + $3;
+                }
+            }
+        }
+        close IN;
+        
+        if ($of == 1) {
+            $status = "OF";
+            $nbp = -1;
+            $nbt = -1;
+        }
+        
+        # For Tina logs, we choose to report -1 as the internal time.
+        my $time_internal = -1;
+        
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
+    }
+}
+
