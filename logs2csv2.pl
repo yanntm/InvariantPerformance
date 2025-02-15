@@ -314,11 +314,35 @@ foreach my $file (@files) {
     $model =~ s/\.gspn//g;
     my $tool = "GreatSPN";
     my $status = "UNK";
-    my ($ptime, $ttime, $nbp, $nbt, $tottime, $timecmd, $tmem) = (-1, -1, -1, -1, -1, -1, -1);
-    my ($cardp, $cardt, $carda) = (-1, -1, 0);  # arc info not provided: set to 0
-    my $is_semiflow = 0;  # flag if log contains semiflow info
-    open my $fh, '<', $file or die "Could not open file '$file' $!";
+    my ($ptime, $nbp, $nbt, $timecmd, $tmem) = (-1, -1, -1, -1, -1);
+    my ($cardp, $cardt, $carda) = (-1, -1, -1);  # Arc info is NA → -1
+    my $examination = "UNK";
     my $of = 0;
+    
+    open my $fh, '<', $file or die "Could not open file '$file': $!";
+    
+    # Determine Examination from the first line (the command line invocation)
+    my $first_line = <$fh>;
+    if (defined $first_line) {
+        chomp $first_line;
+        if ($first_line =~ /-pbasis/ and $first_line =~ /-tbasis/) {
+            $examination = "FLOWS";
+        } elsif ($first_line =~ /-pinv/ and $first_line =~ /-tinv/) {
+            $examination = "SEMIFLOWS";
+        } elsif ($first_line =~ /-tbasis/) {
+            $examination = "TFLOWS";
+        } elsif ($first_line =~ /-pbasis/) {
+            $examination = "PFLOWS";
+        } elsif ($first_line =~ /-tinv/) {
+            $examination = "TSEMIFLOWS";
+        } elsif ($first_line =~ /-pinv/) {
+            $examination = "PSEMIFLOWS";
+        } else {
+            $examination = "UNK";
+        }
+    }
+    
+    # Process the rest of the log
     while (my $line = <$fh>) {
         chomp $line;
         if ($line =~ /PLACES:\s+(\d+)/) {
@@ -331,74 +355,59 @@ foreach my $file (@files) {
             $nbt = $1;
         } elsif ($line =~ /FOUND (\d+) PLACE SEMIFLOWS/) {
             $nbp = $1;
-            $is_semiflow = 1;
         } elsif ($line =~ /FOUND (\d+) TRANSITION SEMIFLOWS/) {
             $nbt = $1;
-            $is_semiflow = 1;
+        } elsif ($line =~ /TIME LIMIT: Killed by timeout after (\d+) seconds/) {
+            $timecmd = $1 * 1000;
+            $status = "TO";
+            next;
         } elsif ($line =~ /TIME LIMIT/) {
             $timecmd = 120000;
             $status = "TO";
             next;
         } elsif ($line =~ /overflow/) {
             $of = 1;
-        } elsif ($line =~ /TOTAL TIME: \[User (\d+\.\d+)s, Sys (\d+\.\d+)s\]/) {
+        } elsif ($line =~ /TOTAL TIME:\s*\[User\s+(\d+\.\d+)s,\s*Sys\s+(\d+\.\d+)s\]/) {
             my $user_time = $1;
             my $sys_time  = $2;
-            if ($ptime == -1) {
-                $ptime = ($user_time + $sys_time) * 1000.0;
-            } else {
-                $ttime = ($user_time + $sys_time) * 1000.0;
-            }
-            if ($ptime != -1 and $ttime != -1) {
-                $status = "OK";
-                next;
-            }
+            $ptime = ($user_time + $sys_time) * 1000.0;
         } elsif ($line =~ /(\d+\.\d+)user\s+(\d+\.\d+)system\s+(\d+):(\d+)\.(\d+)elapsed/) {
             my $user = $1;
             my $system = $2;
             my $minutes = $3;
             my $seconds = $4;
             my $fraction = $5;
-            $timecmd = 60000 * $minutes + $seconds * 1000 + ( $fraction * (10 ** (3 - length($fraction))) );
-        } 
+            my $frac_ms = $fraction * (10 ** (3 - length($fraction)));
+            $timecmd = 60000 * $minutes + 1000 * $seconds + $frac_ms;
+        }
         if ($line =~ /(\d+)maxresident\)k/) {
             $tmem = $1;
         }
     }
     close $fh;
     
-    # Compute total internal time (if both ptime and ttime are available)
-    $tottime = ($ptime != -1 and $ttime != -1) ? $ptime + $ttime : -1;
+    # If any overflow occurred, override invariant counts and status.
     if ($of == 1) {
         $status = "OF";
+        $nbp = -1;
+        $nbt = -1;
     }
     
-    # Determine Examination field based on content:
-    my $examination;
-    if ($is_semiflow) {
-        if ($nbp != -1 and $nbt != -1) {
-            $examination = "SEMIFLOWS";
-        } elsif ($nbp != -1) {
-            $examination = "PSEMIFLOWS";
-        } elsif ($nbt != -1) {
-            $examination = "TSEMIFLOWS";
+    # Determine final status based on mode and invariant counts (unless already TO or OF)
+    if ($status ne "TO" and $status ne "OF") {
+        if ($examination eq "FLOWS") {
+            $status = (($nbp != -1) and ($nbt != -1)) ? "OK" : "ERR";
+        } elsif ($examination eq "PFLOWS" or $examination eq "PSEMIFLOWS") {
+            $status = ($nbp != -1) ? "OK" : "ERR";
+        } elsif ($examination eq "TFLOWS" or $examination eq "TSEMIFLOWS") {
+            $status = ($nbt != -1) ? "OK" : "ERR";
         } else {
-            $examination = "SEMIFLOWS";
-        }
-    } else {
-        if ($nbp != -1 and $nbt != -1) {
-            $examination = "FLOWS";
-        } elsif ($nbp != -1) {
-            $examination = "PFLOWS";
-        } elsif ($nbt != -1) {
-            $examination = "TFLOWS";
-        } else {
-            $examination = "FLOWS";
+            $status = "ERR";
         }
     }
     
-    # Use totime as TimeInternal.
-    my $time_internal = $tottime;
+    # For GreatSPN, our TimeInternal is the TOTAL TIME from the log.
+    my $time_internal = $ptime;
     
     print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
 }
