@@ -82,7 +82,8 @@ foreach my $file (@files) {
                 $timecmd = $1;
                 $tmem = $2;
                 if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
-                    $timecmd = 60000 * $1 + $2 * 1000 + $3;
+                    my $frac_ms = $3 * (10 ** (3 - length($3)));
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;        
                 }
             }
         }
@@ -178,7 +179,8 @@ foreach my $file (@files) {
                 $timecmd = $1;
                 $tmem = $2;
                 if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
-                    $timecmd = 60000*$1 + $2*1000 + $3;
+                    my $frac_ms = $3 * (10 ** (3 - length($3)));
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;        
                 }
             }
         }
@@ -285,7 +287,8 @@ foreach my $file (@files) {
                 $timecmd = $1;
                 $tmem = $2;
                 if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
-                    $timecmd = 60000 * $1 + $2 * 1000 + $3;
+                    my $frac_ms = $3 * (10 ** (3 - length($3)));
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;        
                 }
             }
         }
@@ -304,3 +307,98 @@ foreach my $file (@files) {
     }
 }
 
+
+my @files = <*gspn>;
+foreach my $file (@files) {
+    my $model = $file;
+    $model =~ s/\.gspn//g;
+    my $tool = "GreatSPN";
+    my $status = "UNK";
+    my ($ptime, $ttime, $nbp, $nbt, $tottime, $timecmd, $tmem) = (-1, -1, -1, -1, -1, -1, -1);
+    my ($cardp, $cardt, $carda) = (-1, -1, 0);  # arc info not provided: set to 0
+    my $is_semiflow = 0;  # flag if log contains semiflow info
+    open my $fh, '<', $file or die "Could not open file '$file' $!";
+    my $of = 0;
+    while (my $line = <$fh>) {
+        chomp $line;
+        if ($line =~ /PLACES:\s+(\d+)/) {
+            $cardp = $1;
+        } elsif ($line =~ /TRANSITIONS:\s+(\d+)/) {
+            $cardt = $1;
+        } elsif ($line =~ /FOUND (\d+) VECTORS IN THE PLACE FLOW BASIS/) {
+            $nbp = $1;
+        } elsif ($line =~ /FOUND (\d+) VECTORS IN THE TRANSITION FLOW BASIS/) {
+            $nbt = $1;
+        } elsif ($line =~ /FOUND (\d+) PLACE SEMIFLOWS/) {
+            $nbp = $1;
+            $is_semiflow = 1;
+        } elsif ($line =~ /FOUND (\d+) TRANSITION SEMIFLOWS/) {
+            $nbt = $1;
+            $is_semiflow = 1;
+        } elsif ($line =~ /TIME LIMIT/) {
+            $timecmd = 120000;
+            $status = "TO";
+            next;
+        } elsif ($line =~ /overflow/) {
+            $of = 1;
+        } elsif ($line =~ /TOTAL TIME: \[User (\d+\.\d+)s, Sys (\d+\.\d+)s\]/) {
+            my $user_time = $1;
+            my $sys_time  = $2;
+            if ($ptime == -1) {
+                $ptime = ($user_time + $sys_time) * 1000.0;
+            } else {
+                $ttime = ($user_time + $sys_time) * 1000.0;
+            }
+            if ($ptime != -1 and $ttime != -1) {
+                $status = "OK";
+                next;
+            }
+        } elsif ($line =~ /(\d+\.\d+)user\s+(\d+\.\d+)system\s+(\d+):(\d+)\.(\d+)elapsed/) {
+            my $user = $1;
+            my $system = $2;
+            my $minutes = $3;
+            my $seconds = $4;
+            my $fraction = $5;
+            $timecmd = 60000 * $minutes + $seconds * 1000 + ( $fraction * (10 ** (3 - length($fraction))) );
+        } 
+        if ($line =~ /(\d+)maxresident\)k/) {
+            $tmem = $1;
+        }
+    }
+    close $fh;
+    
+    # Compute total internal time (if both ptime and ttime are available)
+    $tottime = ($ptime != -1 and $ttime != -1) ? $ptime + $ttime : -1;
+    if ($of == 1) {
+        $status = "OF";
+    }
+    
+    # Determine Examination field based on content:
+    my $examination;
+    if ($is_semiflow) {
+        if ($nbp != -1 and $nbt != -1) {
+            $examination = "SEMIFLOWS";
+        } elsif ($nbp != -1) {
+            $examination = "PSEMIFLOWS";
+        } elsif ($nbt != -1) {
+            $examination = "TSEMIFLOWS";
+        } else {
+            $examination = "SEMIFLOWS";
+        }
+    } else {
+        if ($nbp != -1 and $nbt != -1) {
+            $examination = "FLOWS";
+        } elsif ($nbp != -1) {
+            $examination = "PFLOWS";
+        } elsif ($nbt != -1) {
+            $examination = "TFLOWS";
+        } else {
+            $examination = "FLOWS";
+        }
+    }
+    
+    # Use totime as TimeInternal.
+    my $time_internal = $tottime;
+    
+    print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
+}
