@@ -27,7 +27,7 @@
 
 print_usage() {
     cat <<EOF
-Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE]
+Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-solution]
 
 MODE must be one of:
   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -42,12 +42,14 @@ Tool names and their meanings:
   gspn       : GreatSPN (Università di Torino)
 
 --mem=VALUE:
-  Set memory limit for systemd-run.
-  Default is "16G". Use "ANY" to disable memory limit.
+  Set memory limit for systemd-run (default: 16G, "ANY" disables).
+
+-solution:
+  Collect solution files (*.sol) alongside logs.
 
 Examples:
   $0 FLOWS
-  $0 PSEMIFLOWS --tools=tina4ti2,petri64
+  $0 PSEMIFLOWS --tools=tina4ti2,petri64 -solution
   $0 PFLOWS --mem=ANY
 EOF
 }
@@ -65,22 +67,6 @@ if [ ! -f ./config.sh ]; then
 fi
 source ./config.sh
 
-# --- Check Required Binaries ---
-check_executable() {
-    if [ ! -x "$1" ]; then
-        echo "Error: '$1' not found or not executable."
-        exit 1
-    fi
-}
-
-check_executable "$STRUCT"
-check_executable "$DSPN"
-check_executable "$GSOL"
-check_executable "$PETRISPOT32"
-check_executable "$PETRISPOT64"
-check_executable "$PETRISPOT128"
-check_executable "$ITSTOOLS"
-check_executable "$TIMEOUT"
 
 # --- Parse Arguments ---
 MODE="$1"
@@ -89,6 +75,7 @@ shift
 # Default: run all tools
 TOOLS_TO_RUN="tina,tina4ti2,itstools,petri32,petri64,petri128,gspn"
 MEM_LIMIT="16G"
+SOLUTION=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -101,6 +88,9 @@ for arg in "$@"; do
     -h|--help)
       print_usage
       exit 0
+      ;;
+    -solution) 
+      SOLUTION=true 
       ;;
     *)
       echo "Unknown argument: $arg"
@@ -127,6 +117,33 @@ for tool in "${selected_tools[@]}"; do
         exit 1
     fi
 done
+
+# --- Check Required Binaries for Selected Tools ---
+check_executable() {
+    if [ ! -x "$1" ]; then
+        echo "Error: '$1' not found or not executable."
+        exit 1
+    fi
+}
+
+# Map tools to their executables
+declare -A tool_to_exe=(
+    ["tina"]="$STRUCT"
+    ["tina4ti2"]="$STRUCT"
+    ["itstools"]="$ITSTOOLS"
+    ["petri32"]="$PETRISPOT32"
+    ["petri64"]="$PETRISPOT64"
+    ["petri128"]="$PETRISPOT128"
+    ["gspn"]="$DSPN"
+)
+
+# Check only selected tools
+IFS=',' read -ra selected_tools <<< "$TOOLS_TO_RUN"
+for tool in "${selected_tools[@]}"; do
+    check_executable "${tool_to_exe[$tool]}"
+done
+check_executable "$TIMEOUT"  # Always needed
+
 
 # Set memory limits based on MEM_LIMIT flag.
 if [ "$MEM_LIMIT" = "ANY" ]; then
@@ -186,6 +203,13 @@ case "$MODE" in
     ;;
 esac
 
+# Adjust tool flags based on SOLUTION mode: add -q if not collecting solutions
+if [ "$SOLUTION" != true ]; then
+    TINA_FLAG="$TINA_FLAG -q"
+    ITS_FLAG="$ITS_FLAG -q"
+    PETRISPOT_FLAG="$PETRISPOT_FLAG -q"
+fi
+
 mkdir -p "$LOGDIR"
 export LOGS="$PWD/$LOGDIR"
 
@@ -203,6 +227,7 @@ contains_tool() {
 }
 
 # --- Process Each Model ---
+# --- Process Each Model ---
 for model_dir in "$MODELDIR"/*/; do
     cd "$model_dir" || exit
     model=$(basename "$model_dir")
@@ -210,73 +235,101 @@ for model_dir in "$MODELDIR"/*/; do
     
     # --- Tina (without 4ti2 integration) ---
     if contains_tool tina; then
-      if [ ! -f "$LOGS/$model.tina" ]; then
-          if [ -f large_marking ]; then
-              $LIMITS "$STRUCTLARGE" @MLton fixed-heap 15G -- $TINA_FLAG -mp -q "$model_dir/model.pnml" \
-                  > "$LOGS/$model.tina" 2>&1
-          else
-              $LIMITS "$STRUCT" @MLton fixed-heap 15G -- $TINA_FLAG -mp -q "$model_dir/model.pnml" \
-                  > "$LOGS/$model.tina" 2>&1
-          fi
-      fi
+        logfile="$LOGS/$model.tina"
+        if [ ! -f "$logfile" ]; then
+            tina_cmd="$STRUCT"
+            if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
+            $LIMITS "$tina_cmd" @MLton fixed-heap 15G -- $TINA_FLAG -mp "$model_dir/model.pnml" \
+                > "$logfile" 2>&1
+            if [ "$SOLUTION" = true ]; then
+                python3 "$ROOT/collectSolution.py" --tool=tina --log="$logfile" \
+                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.tina"
+            fi
+        fi
     fi
 
     # --- Tina with 4ti2 integration ---
     if contains_tool tina4ti2; then
-      if [ ! -f "$LOGS/$model.struct" ]; then
-          rm -f /tmp/f-* > /dev/null 2>&1
-          # add 4ti2 to path
-          export PATH=$ROOT/bin:$PATH
-          if [ -f large_marking ]; then
-              $LIMITS "$STRUCTLARGE" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I -q "$model_dir/model.pnml" \
-                  > "$LOGS/$model.struct" 2>&1
-          else
-              $LIMITS "$STRUCT" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I -q "$model_dir/model.pnml" \
-                  > "$LOGS/$model.struct" 2>&1
-          fi
-          rm -f /tmp/f-* > /dev/null 2>&1
-          sync
-      fi
+        logfile="$LOGS/$model.struct"
+        if [ ! -f "$logfile" ]; then
+            rm -f /tmp/f-* > /dev/null 2>&1
+            export PATH=$ROOT/bin:$PATH
+            tina_cmd="$STRUCT"
+            if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
+            $LIMITS "$tina_cmd" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I "$model_dir/model.pnml" \
+                > "$logfile" 2>&1
+            rm -f /tmp/f-* > /dev/null 2>&1
+            sync
+            if [ "$SOLUTION" = true ]; then
+                python3 "$ROOT/collectSolution.py" --tool=tina --log="$logfile" \
+                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.struct"
+            fi
+        fi
     fi
 
     # --- ITS-Tools ---
     if contains_tool itstools; then
-      if [ ! -f "$LOGS/$model.its" ]; then
-          $LIMITS "$ITSTOOLS" -pnfolder "$model_dir" $ITS_FLAG \
-              > "$LOGS/$model.its" 2>&1
-      fi
+        logfile="$LOGS/$model.its"
+        if [ ! -f "$logfile" ]; then
+            $LIMITS "$ITSTOOLS" -pnfolder "$model_dir" $ITS_FLAG \
+                > "$logfile" 2>&1
+            if [ "$SOLUTION" = true ]; then
+                python3 "$ROOT/collectSolution.py" --tool=itstools --log="$logfile" \
+                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.its"
+            fi
+        fi
     fi
 
     # --- PetriSpot 32-bit ---
     if contains_tool petri32; then
-      if [ ! -f "$LOGS/$model.petri32" ]; then
-          $LIMITS "$PETRISPOT32" -i "$model_dir/model.pnml" -q $PETRISPOT_FLAG \
-              > "$LOGS/$model.petri32" 2>&1
-      fi
+        logfile="$LOGS/$model.petri32"
+        if [ ! -f "$logfile" ]; then
+            $LIMITS "$PETRISPOT32" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
+                > "$logfile" 2>&1
+            if [ "$SOLUTION" = true ]; then
+                python3 "$ROOT/collectSolution.py" --tool=petrispot --log="$logfile" \
+                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri32"
+            fi
+        fi
     fi
 
     # --- PetriSpot 64-bit ---
     if contains_tool petri64; then
-      if [ ! -f "$LOGS/$model.petri64" ]; then
-          $LIMITS "$PETRISPOT64" -i "$model_dir/model.pnml" -q $PETRISPOT_FLAG \
-              > "$LOGS/$model.petri64" 2>&1
-      fi
+        logfile="$LOGS/$model.petri64"
+        if [ ! -f "$logfile" ]; then
+            $LIMITS "$PETRISPOT64" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
+                > "$logfile" 2>&1
+            if [ "$SOLUTION" = true ]; then
+                python3 "$ROOT/collectSolution.py" --tool=petrispot --log="$logfile" \
+                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri64"
+            fi
+        fi
     fi
 
     # --- PetriSpot 128-bit ---
     if contains_tool petri128; then
-      if [ ! -f "$LOGS/$model.petri128" ]; then
-          $LIMITS "$PETRISPOT128" -i "$model_dir/model.pnml" -q $PETRISPOT_FLAG \
-              > "$LOGS/$model.petri128" 2>&1
-      fi
+        logfile="$LOGS/$model.petri128"
+        if [ ! -f "$logfile" ]; then
+            $LIMITS "$PETRISPOT128" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
+                > "$logfile" 2>&1
+            if [ "$SOLUTION" = true ]; then
+                python3 "$ROOT/collectSolution.py" --tool=petrispot --log="$logfile" \
+                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri128"
+            fi
+        fi
     fi
 
     # --- GreatSPN ---
     if contains_tool gspn; then
-      if [ ! -f "$LOGS/$model.gspn" ]; then
-          $LIMITS "$DSPN" -load model $GSPN_FLAG \
-              > "$LOGS/$model.gspn" 2>&1
-      fi
+        logfile="$LOGS/$model.gspn"
+        if [ ! -f "$logfile" ]; then
+            $LIMITS "$DSPN" -load model $GSPN_FLAG \
+                > "$logfile" 2>&1
+            if [ "$SOLUTION" = true ]; then
+                python3 "$ROOT/collectSolution.py" --tool=greatspn --log="$logfile" \
+                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.gspn"
+            fi
+        fi
     fi
 
     cd "$MODELDIR"
