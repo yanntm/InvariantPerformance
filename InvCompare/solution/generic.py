@@ -10,9 +10,7 @@ def create_solution(tool: str, log_path: str, model_path: str, mode: str) -> Non
     """
     if tool == "tina":
         create_solution_for_tina(log_path, model_path, mode)
-#    elif tool == "itstools":
-#        create_solution_for_itstools(log_path, model_path, mode)
-    elif tool == "petrispot":
+    elif tool == "petrispot" or tool == "itstools" :
         create_solution_for_petrispot(log_path, model_path, mode)
     elif tool == "greatspn":
         create_solution_for_greatspn(log_path, model_path, mode)

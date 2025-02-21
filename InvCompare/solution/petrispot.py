@@ -1,10 +1,10 @@
 # solution/petrispot.py
 from typing import List
 import os
-import subprocess
+import re
 from invariants.invariant import Invariant
 from invariants.report import formatInvariantAsEquation
-from parsing.parser_petrispot import parseLogPetriSpot
+from parsing.parser_petrispot import _parse_inv_line_petrispot
 
 def create_solution_for_petrispot(log_path: str, model_path: str, mode: str) -> None:
     """
@@ -15,17 +15,26 @@ def create_solution_for_petrispot(log_path: str, model_path: str, mode: str) -> 
         model_path: Path to the model folder (unused here but kept for consistency).
         mode: Calculation mode (e.g., "pflows", "tsemiflows").
     """
-    # Determine if we're parsing place or transition flows
-    is_place_flow = mode in ("pflows", "psemiflows", "flows", "semiflows")
-    
-    # Step 1: Parse invariants from the log
-    invariants: List[Invariant] = parseLogPetriSpot(log_path, is_place_flow)
-    
-    # Step 2: Strip invariant lines from the log file in place
-    subprocess.run(["sed", "-i", "/^inv :.*$/d", log_path], check=True)
-    
-    # Step 3: Write invariants to a .sol file using report.py syntax
     sol_file = f"{log_path}.sol"
-    with open(sol_file, "w", encoding="utf-8") as f:
-        for inv in invariants:
-            f.write(formatInvariantAsEquation(inv) + "\n")
+    tmp_file = f"{log_path}.tmp"
+    inv_line_pattern = re.compile(r'^\s*inv\s*:\s*(.*)$')
+    
+    with open(log_path, "r", encoding="utf-8") as log_f, \
+         open(sol_file, "w", encoding="utf-8") as sol_f, \
+         open(tmp_file, "w", encoding="utf-8") as tmp_f:
+        
+        for line in log_f:
+            line_stripped = line.rstrip()  # Preserve original EOL for tmp
+            match = inv_line_pattern.match(line_stripped)
+            if match:
+                inv_expr = match.group(1)
+                inv = _parse_inv_line_petrispot(inv_expr)
+                if inv:
+                    sol_f.write(formatInvariantAsEquation(inv) + "\n")
+            else:
+                tmp_f.write(line)  # Keep original line including EOL
+    
+    # Replace original log with tmp
+    os.replace(tmp_file, log_path)
+    
+    
