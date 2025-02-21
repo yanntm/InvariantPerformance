@@ -20,7 +20,7 @@ from invariants.deduplicate import deduplicateInvariants
 
 # Our new modules:
 from solver.satcheck import checkXor
-from report import (
+from invariants.report import (
     reportSparseAssignment,
     findViolations,
     reportViolations,
