@@ -10,7 +10,7 @@ def main() -> None:
                         help="Tool name to process.")
     parser.add_argument("--log", required=True, help="Path to the tool's log file.")
     parser.add_argument("--model", required=True, help="Path to the model folder.")
-    parser.add_argument("--mode", required=True, choices=["pflows", "psemiflows", "tflows", "tsemiflows", "flows", "semiflows"],
+    parser.add_argument("--mode", required=True, choices=["PFLOWS", "PSEMIFLOWS", "TFLOWS", "TSEMIFLOWS"],
                         help="Mode of invariant calculation.")
     
     args = parser.parse_args()
