@@ -4,7 +4,7 @@ import re
 from typing import List, Dict
 from invariants.invariant import Invariant
 
-from report import formatInvariantAsEquation
+from invariants.report import formatInvariantAsEquation
 
 def parseLogPetriSpot(logPath: str, isPlaceFlow: bool = True) -> List[Invariant]:
     """
