@@ -227,7 +227,6 @@ contains_tool() {
 }
 
 # --- Process Each Model ---
-# --- Process Each Model ---
 for model_dir in "$MODELDIR"/*/; do
     cd "$model_dir" || exit
     model=$(basename "$model_dir")
@@ -242,7 +241,7 @@ for model_dir in "$MODELDIR"/*/; do
             $LIMITS "$tina_cmd" @MLton fixed-heap 15G -- $TINA_FLAG -mp "$model_dir/model.pnml" \
                 > "$logfile" 2>&1
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/collectSolution.py" --tool=tina --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.tina"
             fi
         fi
@@ -261,7 +260,7 @@ for model_dir in "$MODELDIR"/*/; do
             rm -f /tmp/f-* > /dev/null 2>&1
             sync
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/collectSolution.py" --tool=tina --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.struct"
             fi
         fi
@@ -274,7 +273,7 @@ for model_dir in "$MODELDIR"/*/; do
             $LIMITS "$ITSTOOLS" -pnfolder "$model_dir" $ITS_FLAG \
                 > "$logfile" 2>&1
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/collectSolution.py" --tool=itstools --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=itstools --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.its"
             fi
         fi
@@ -287,7 +286,7 @@ for model_dir in "$MODELDIR"/*/; do
             $LIMITS "$PETRISPOT32" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
                 > "$logfile" 2>&1
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/collectSolution.py" --tool=petrispot --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri32"
             fi
         fi
@@ -300,7 +299,7 @@ for model_dir in "$MODELDIR"/*/; do
             $LIMITS "$PETRISPOT64" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
                 > "$logfile" 2>&1
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/collectSolution.py" --tool=petrispot --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri64"
             fi
         fi
@@ -313,7 +312,7 @@ for model_dir in "$MODELDIR"/*/; do
             $LIMITS "$PETRISPOT128" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
                 > "$logfile" 2>&1
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/collectSolution.py" --tool=petrispot --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri128"
             fi
         fi
@@ -326,7 +325,7 @@ for model_dir in "$MODELDIR"/*/; do
             $LIMITS "$DSPN" -load model $GSPN_FLAG \
                 > "$logfile" 2>&1
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/collectSolution.py" --tool=greatspn --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=greatspn --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.gspn"
             fi
         fi
