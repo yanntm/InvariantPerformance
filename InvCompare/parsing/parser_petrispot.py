@@ -4,6 +4,8 @@ import re
 from typing import List, Dict
 from invariants.invariant import Invariant
 
+from report import formatInvariantAsEquation
+
 def parseLogPetriSpot(logPath: str, isPlaceFlow: bool = True) -> List[Invariant]:
     """
     Parse the content of a PetriSpot (petri32/64/128) tool log file
@@ -75,73 +77,57 @@ def parseLogPetriSpot(logPath: str, isPlaceFlow: bool = True) -> List[Invariant]
 
 def _parse_inv_line_petrispot(expr: str) -> Invariant:
     """
-    Parse the string after "inv : " into an Invariant object.
-    Example input: "capacity_c0 + capacity_c1 + 4*resource_c0 = 10"
-                   or "a + 3*b - c = -2"
-    The general form is: <left side> = <right side>
-    The left side is an expression with + and - terms:
-      e.g. "capacity_c0 + 4*resource_c0 - capacity_c2"
-    The right side is an integer constant.
-
-    Return: Invariant with varCoeffs, const.
+    Parse an invariant string of the form:
+       <term> <term> ... = <constant>
+    where each term is:
+       optional whitespace, optional sign, optional whitespace, 
+       optional integer, optional '*' and then an identifier (starting with a letter).
+    
+    Example input:
+       "-p1003 + p1054 - p915 + p957 - p958 + p960 - p961 + p965 + p977 + p980 + p982 + p994 = 0"
+    
+    Returns an Invariant object.
     """
-    varCoeffs: Dict[str,int] = {}
-    const_val = 0
-
-    # Split around '='
-    parts = expr.split('=')
-    if len(parts) == 2:
-        lhs = parts[0].strip()
-        rhs = parts[1].strip()
-        try:
-            const_val = int(rhs)
-        except ValueError:
-            # If there's an unexpected format or no integer on RHS
-            # We could either raise an error or default to 0
-            const_val = 0
+    # Split the expression at '='.
+    if '=' in expr:
+        lhs, rhs = expr.split('=', 1)
     else:
-        # If there's no "=", assume const=0
         lhs = expr
-        const_val = 0
-
-    # Parse the LHS expression (which can contain +, -).
-    # A simple approach: replace '-' with '+-' to split easily on '+'
-    # But be careful if there's already a " + -"? We'll do a safe replacement:
-    lhs_mod = lhs.replace('-', '+-')
-    # Now split by '+'
-    tokens = lhs_mod.split('+')
-    # Example:
-    #   "capacity_c0 + capacity_c1 - 3*resource_c0"
-    # => lhs_mod = "capacity_c0 + capacity_c1 +- 3*resource_c0"
-    # => tokens = ["capacity_c0 ", " capacity_c1 ", "- 3*resource_c0"]
-
-    for token in tokens:
-        t = token.strip()
-        if not t:
-            continue
-        # t might look like "capacity_c0", "-3*resource_c0", "4*xxx", "-xxx"
-        # We'll parse sign and factor
-        match = re.match(r'^([+-])?(\d*)\*?(\S+)$', t)
-        if match:
-            sign_str = match.group(1)  # '+', '-', or None
-            coeff_str = match.group(2) # e.g. '3' or ''
-            var_name  = match.group(3) # e.g. 'resource_c0'
-
-            sign = 1
-            if sign_str == '-':
-                sign = -1
-            # If no sign_str, sign=+1 by default
-
-            if coeff_str == '':
-                # no explicit number => 1
-                coeff_val = 1
-            else:
-                coeff_val = int(coeff_str)
-
-            final_coeff = sign * coeff_val
-            varCoeffs[var_name] = varCoeffs.get(var_name, 0) + final_coeff
-        else:
-            # If we cannot parse the token, ignore or raise an error
-            pass
-
-    return Invariant(varCoeffs, const_val)
+        rhs = "0"
+    const_val = int(rhs.strip())
+    
+    varCoeffs: Dict[str, int] = {}
+    
+    # Regex pattern for one term:
+    #  \s*           : any leading whitespace
+    #  ([+-]?)       : an optional sign
+    #  \s*           : optional whitespace
+    #  (\d+)?        : an optional integer coefficient (one or more digits)
+    #  \s*(?:\*\s*)? : an optional '*' with surrounding whitespace
+    #  ([A-Za-z]\w*): a variable identifier (starts with a letter, then word characters)
+    pattern = re.compile(r'\s*([+-]?)\s*(\d+)?\s*(?:\*\s*)?([A-Za-z]\w*)')
+    
+    pos = 0
+    # Process the LHS until the end.
+    while pos < len(lhs):
+        match = pattern.match(lhs, pos)
+        if not match:
+            # If there's no match, break out (or optionally report an error).
+            break
+        
+        sign_str = match.group(1)
+        coeff_str = match.group(2)
+        identifier = match.group(3)
+        
+        sign = -1 if sign_str == '-' else 1
+        coeff = int(coeff_str) if coeff_str is not None else 1
+        
+        # Accumulate coefficient for the variable.
+        varCoeffs[identifier] = varCoeffs.get(identifier, 0) + sign * coeff
+        
+        # Update position.
+        pos = match.end()
+    
+    inv = Invariant(varCoeffs, const_val)
+    # print(f"parsed {formatInvariantAsEquation(inv)} from line {expr}")
+    return inv
