@@ -2,7 +2,7 @@
 # run.sh: Run performance tests on models for a given mode and a selected set of tools.
 #
 # Usage:
-#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE]
+#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t TIMEOUT]
 #
 # MODE must be one of:
 #   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -20,19 +20,22 @@
 #   Set memory limit for systemd-run.
 #   Default is "16G". Use "ANY" to disable the memory limit.
 #
+# -t TIMEOUT:
+#   Set timeout in seconds (default: 120).
+#
 # Examples:
 #   ./run.sh FLOWS
-#   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64
-#   ./run.sh PFLOWS --mem=ANY
+#   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64 -t 300
+#   ./run.sh PFLOWS --mem=ANY -t 60
 
 print_usage() {
     cat <<EOF
-Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-solution]
+Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t=TIMEOUT] [-solution]
 
 MODE must be one of:
   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
 
-Tool names and their meanings:
+Tool names and their meanings: (default : all tools)
   tina       : Tina struct component (LAAS, CNRS)
   tina4ti2   : Tina with 4ti2 integration (LAAS, CNRS)
   itstools   : ITS-Tools (LIP6, Sorbonne Université)
@@ -44,13 +47,16 @@ Tool names and their meanings:
 --mem=VALUE:
   Set memory limit for systemd-run (default: 16G, "ANY" disables).
 
+-t=TIMEOUT:
+  Set timeout in seconds (default: 120).
+
 -solution:
   Collect solution files (*.sol) alongside logs.
 
 Examples:
   $0 FLOWS
-  $0 PSEMIFLOWS --tools=tina4ti2,petri64 -solution
-  $0 PFLOWS --mem=ANY
+  $0 PSEMIFLOWS --tools=tina4ti2,petri64 -t=300 -solution
+  $0 PFLOWS --mem=ANY -t=60
 EOF
 }
 
@@ -67,14 +73,14 @@ if [ ! -f ./config.sh ]; then
 fi
 source ./config.sh
 
-
 # --- Parse Arguments ---
 MODE="$1"
 shift
 
-# Default: run all tools
+# Default values
 TOOLS_TO_RUN="tina,tina4ti2,itstools,petri32,petri64,petri128,gspn"
 MEM_LIMIT="16G"
+TIMEOUT_SEC=120
 SOLUTION=false
 
 for arg in "$@"; do
@@ -84,6 +90,9 @@ for arg in "$@"; do
       ;;
     -mem=*|--mem=*)
       MEM_LIMIT="${arg#*=}"
+      ;;
+    -t=*)
+      TIMEOUT_SEC="${arg#*=}"
       ;;
     -h|--help)
       print_usage
@@ -99,6 +108,13 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# Validate timeout is a positive integer
+if ! [[ "$TIMEOUT_SEC" =~ ^[0-9]+$ ]] || [ "$TIMEOUT_SEC" -le 0 ]; then
+    echo "Error: Timeout must be a positive integer."
+    print_usage
+    exit 1
+fi
 
 # Validate provided tool names.
 allowed_tools="tina tina4ti2 itstools petri32 petri64 petri128 gspn"
@@ -144,12 +160,11 @@ for tool in "${selected_tools[@]}"; do
 done
 check_executable "$TIMEOUT"  # Always needed
 
-
-# Set memory limits based on MEM_LIMIT flag.
+# Set memory limits and timeout based on flags
 if [ "$MEM_LIMIT" = "ANY" ]; then
-    export LIMITS="$TIMEOUT 120 time"
+    export LIMITS="$TIMEOUT $TIMEOUT_SEC time"
 else
-    export LIMITS="$TIMEOUT 120 time systemd-run --scope -p MemoryMax=$MEM_LIMIT --user"
+    export LIMITS="$TIMEOUT $TIMEOUT_SEC time systemd-run --scope -p MemoryMax=$MEM_LIMIT --user"
 fi
 
 # --- Set Mode-Specific Flags ---
@@ -251,13 +266,13 @@ for model_dir in "$MODELDIR"/*/; do
     if contains_tool tina4ti2; then
         logfile="$LOGS/$model.struct"
         if [ ! -f "$logfile" ]; then
-            rm -f /tmp/f-* > /dev/null 2>&1
+            # rm -f /tmp/f-* > /dev/null 2>&1
             export PATH=$ROOT/bin:$PATH
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
             $LIMITS "$tina_cmd" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I "$model_dir/model.pnml" \
                 > "$logfile" 2>&1
-            rm -f /tmp/f-* > /dev/null 2>&1
+            # rm -f /tmp/f-* > /dev/null 2>&1
             sync
             if [ "$SOLUTION" = true ]; then
                 python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
