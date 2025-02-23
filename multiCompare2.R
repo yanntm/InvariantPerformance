@@ -7,11 +7,28 @@ library(gridExtra)
 
 # Accept command line arguments: CSV file and optional comma-separated tools list
 args <- commandArgs(trailingOnly = TRUE)
-csv_file <- if (length(args) > 0) args[1] else "results.csv"
+csv_file <- if (length(args) > 0) args[1] else "invar.csv"
 tools_arg <- if (length(args) > 1) args[2] else ""
 
 # Load data
 data <- read.csv(csv_file, dec = ".", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+
+# Check for non-numeric Time and Mem
+cat("Checking raw data for non-numeric Time values:\n")
+non_numeric_time <- data[!is.na(data$Time) & !grepl("^-?[0-9]+$", data$Time), ]
+if (nrow(non_numeric_time) > 0) {
+  print(non_numeric_time[, c("Model", "Tool", "Examination", "Time")])
+} else {
+  cat("All Time values appear numeric.\n")
+}
+
+cat("Checking raw data for non-numeric Mem values:\n")
+non_numeric_mem <- data[!is.na(data$Mem) & !grepl("^-?[0-9]+$", data$Mem), ]
+if (nrow(non_numeric_mem) > 0) {
+  print(non_numeric_mem[, c("Model", "Tool", "Examination", "Mem")])
+} else {
+  cat("All Mem values appear numeric.\n")
+}
 
 # Convert any -1 (which is invalid) to NA in numeric columns
 data <- data %>% mutate(across(where(is.numeric), ~na_if(., -1)))
@@ -25,11 +42,31 @@ if (tools_arg != "") {
   data <- data %>% filter(Tool %in% tools_filter)
 }
 
-# Function to compute statistics for a given tool
 get_tool_stats <- function(tool, df) {
   mean_time_col <- paste("Time", tool, sep = "_")
   mean_mem_col  <- paste("Mem", tool, sep = "_")
   status_col    <- paste("Status", tool, sep = "_")
+  
+  # Debug: Check if columns exist and their contents
+  if (!mean_time_col %in% names(df)) {
+    cat("Column", mean_time_col, "not found in data frame for tool", tool, "\n")
+    return(NULL)
+  }
+  if (!mean_mem_col %in% names(df)) {
+    cat("Column", mean_mem_col, "not found in data frame for tool", tool, "\n")
+    return(NULL)
+  }
+  time_data <- df[[mean_time_col]]
+  cat("Tool:", tool, "Time column sample:", head(time_data), "Class:", class(time_data), "\n")
+  
+  stats <- df %>%
+    summarise(
+      Tool = tool,
+      Mean_Time = mean(get(mean_time_col), na.rm = TRUE),
+      Mean_Mem  = mean(get(mean_mem_col), na.rm = TRUE),
+      Total_Runs = n(),
+      .groups = 'drop'
+    )
   
   stats <- df %>%
     summarise(
