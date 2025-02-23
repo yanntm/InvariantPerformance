@@ -5,6 +5,9 @@ library(ggplot2)
 library(grid)
 library(gridExtra)
 
+
+options(width = 1000)  # or any sufficiently large number
+
 # Accept command line arguments: CSV file and optional comma-separated tools list
 args <- commandArgs(trailingOnly = TRUE)
 csv_file <- if (length(args) > 0) args[1] else "invar.csv"
