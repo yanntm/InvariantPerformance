@@ -5,7 +5,7 @@ for i in logs_* ;
 do
   cd $i
   type=$(echo $i | sed 's/logs_//')
-  ../log2csv2.pl > "../$type.csv"
+  ../logs2csv2.pl > "../$type.csv"
   cd ..
 done
 
