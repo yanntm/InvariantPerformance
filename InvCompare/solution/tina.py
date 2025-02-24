@@ -13,7 +13,7 @@ def create_solution_for_tina(log_path: str, model_path: str, mode: str) -> None:
     Args:
         log_path: Path to the Tina log file (e.g., logs/model.tina).
         model_path: Path to the model folder (unused but kept for consistency).
-        mode: Calculation mode (e.g., "pflows", "tsemiflows").
+        mode: Calculation mode (e.g., "PFLOWS", "PSEMIFLOWS").
     """
     sol_file = f"{log_path}.sol"
     tmp_file = f"{log_path}.tmp"
@@ -21,7 +21,7 @@ def create_solution_for_tina(log_path: str, model_path: str, mode: str) -> None:
     net_line_pattern = re.compile(r'^(tr|pl)\s+.*$')
     inv_pattern = re.compile(r'^.*\(-?\d+\)$')
     
-    is_place_flow = mode in ("pflows", "psemiflows", "flows", "semiflows")
+    is_place_flow = mode in ("PFLOWS", "PSEMIFLOWS", "FLOWS", "SEMIFLOWS")
     in_net_block = False
     in_invariants = False
     
