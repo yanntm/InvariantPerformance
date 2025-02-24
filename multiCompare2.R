@@ -4,6 +4,7 @@ library(purrr)
 library(ggplot2)
 library(grid)
 library(gridExtra)
+library(kableExtra)
 
 options(width = 1000)
 
@@ -30,6 +31,21 @@ if (nrow(non_numeric_mem) > 0) {
   cat("All Mem values appear numeric.\n")
 }
 
+# Check triplet completeness
+expected_models <- unique(data$Model)
+expected_tools <- unique(data$Tool)
+expected_exams <- unique(data$Examination)
+expected_triplets <- expand.grid(Model = expected_models, Tool = expected_tools, Examination = expected_exams)
+actual_triplets <- data %>% select(Model, Tool, Examination)
+missing_triplets <- anti_join(expected_triplets, actual_triplets, by = c("Model", "Tool", "Examination"))
+if (nrow(missing_triplets) > 0) {
+  cat("Missing triplets detected in invar.csv:\n")
+  print(missing_triplets)
+  cat("Number of missing triplets:", nrow(missing_triplets), "\n")
+} else {
+  cat("All expected Tool/Examination/Model triplets present.\n")
+}
+
 data <- data %>% mutate(across(where(is.numeric), ~na_if(., -1)))
 data <- data %>% filter(!grepl("COL", Model))
 if (tools_arg != "") {
@@ -37,28 +53,30 @@ if (tools_arg != "") {
   data <- data %>% filter(Tool %in% tools_filter)
 }
 
-get_tool_stats <- function(tool, df) {
+get_tool_stats <- function(tool, df, exam_data) {
   mean_time_col <- paste("Time", tool, sep = "_")
   mean_mem_col <- paste("Mem", tool, sep = "_")
   status_col <- paste("Status", tool, sep = "_")
   
   if (!mean_time_col %in% names(df)) {
-    cat("Column", mean_time_col, "not found in data frame for tool", tool, "\n")
+    cat("Column", mean_time_col, "not found for tool", tool, "\n")
     return(NULL)
   }
   if (!mean_mem_col %in% names(df)) {
-    cat("Column", mean_mem_col, "not found in data frame for tool", tool, "\n")
+    cat("Column", mean_mem_col, "not found for tool", tool, "\n")
     return(NULL)
   }
-  time_data <- df[[mean_time_col]]
-  cat("Tool:", tool, "Time column sample:", head(time_data), "Class:", class(time_data), "\n")
+  
+  total_runs <- exam_data %>% filter(Tool == tool) %>% nrow()
+  expected_runs <- length(expected_models)  # Global expected models
+  missing_runs <- expected_runs - total_runs
   
   stats <- df %>%
     summarise(
       Tool = tool,
       Mean_Time = mean(get(mean_time_col), na.rm = TRUE),
       Mean_Mem = mean(get(mean_mem_col), na.rm = TRUE),
-      Total_Runs = n(),
+      Total_Runs = total_runs,
       .groups = 'drop'
     )
   
@@ -72,32 +90,42 @@ get_tool_stats <- function(tool, df) {
     ) %>%
     rename_with(~ paste("Status", ., sep = "_"), everything())
   
-  complete_stats <- bind_cols(stats, status_counts)
+  complete_stats <- bind_cols(stats, status_counts) %>%
+    mutate(Status_NA = missing_runs,
+           Failures = Total_Runs - Status_OK,
+           Failures = if_else(is.na(Failures), 0L, as.integer(Failures))) %>%
+    select(Tool, Mean_Time, Mean_Mem, Total_Runs, Status_OK, Failures, Status_NA, everything())
+  
   return(complete_stats)
 }
 
 plot_comparisons <- function(df, tool1, tool2) {
+  status_col1 <- paste("Status", tool1, sep = "_")
+  status_col2 <- paste("Status", tool2, sep = "_")
+  
   fperf <- df %>%
+    filter(!is.na(get(paste("Time", tool1, sep = "_"))) & 
+           !is.na(get(paste("Time", tool2, sep = "_"))) &
+           get(status_col1) != "NA" & 
+           get(status_col2) != "NA") %>%
     mutate(
-      RepTime_1 = ifelse(get(paste("Status", tool1, sep = "_")) != "OK", 120000, get(paste("Time", tool1, sep = "_"))),
-      RepTime_2 = ifelse(get(paste("Status", tool2, sep = "_")) != "OK", 120000, get(paste("Time", tool2, sep = "_"))),
-      Mem_1 = ifelse(get(paste("Status", tool1, sep = "_")) != "OK", 16000000, get(paste("Mem", tool1, sep = "_"))),
-      Mem_2 = ifelse(get(paste("Status", tool2, sep = "_")) != "OK", 16000000, get(paste("Mem", tool2, sep = "_"))),
+      RepTime_1 = ifelse(get(status_col1) != "OK", 120000, get(paste("Time", tool1, sep = "_"))),
+      RepTime_2 = ifelse(get(status_col2) != "OK", 120000, get(paste("Time", tool2, sep = "_"))),
+      Mem_1 = ifelse(get(status_col1) != "OK", 16000000, get(paste("Mem", tool1, sep = "_"))),
+      Mem_2 = ifelse(get(status_col2) != "OK", 16000000, get(paste("Mem", tool2, sep = "_"))),
       Verdict_Color = case_when(
-        get(paste("Status", tool1, sep = "_")) == "OK" & get(paste("Status", tool2, sep = "_")) != "OK" ~ paste("Only", tool1, "solves"),
-        get(paste("Status", tool2, sep = "_")) == "OK" & get(paste("Status", tool1, sep = "_")) != "OK" ~ paste("Only", tool2, "solves"),
-        get(paste("Status", tool1, sep = "_")) == "OK" & get(paste("Status", tool2, sep = "_")) == "OK" ~ "Both tools solve",
+        get(status_col1) == "OK" & get(status_col2) != "OK" ~ paste("Only", tool1, "solves"),
+        get(status_col2) == "OK" & get(status_col1) != "OK" ~ paste("Only", tool2, "solves"),
+        get(status_col1) == "OK" & get(status_col2) == "OK" ~ "Both tools solve",
         TRUE ~ "Both tools fail"
       )
     )
   
-  # Compute counts and create legend title with total and counts
   verdict_counts <- fperf %>%
     count(Verdict_Color) %>%
     mutate(Label = paste(Verdict_Color, " (", n, ")", sep = ""))
   total_points <- nrow(fperf)
-  legend_title <- paste("Outcome (", total_points, ")",  
-                        sep = "")
+  legend_title <- paste("Outcome (", total_points, ")", sep = "")
   fperf <- fperf %>%
     left_join(verdict_counts %>% select(Verdict_Color, Label), by = "Verdict_Color") %>%
     mutate(Verdict_Color = Label)
@@ -132,13 +160,12 @@ plot_comparisons <- function(df, tool1, tool2) {
     ylab(paste("Memory for", tool2)) +
     ggtitle(paste("Memory usage comparison between", tool1, "and", tool2))
   
-  return(list(Time_Comparison = time_plot, 
-              Memory_Comparison = memory_plot))
+  return(list(Time_Comparison = time_plot, Memory_Comparison = memory_plot))
 }
 
 examinations <- unique(data$Examination)
 
-pdf("Tool_Comparisons.pdf", paper = "a4r")
+pdf("Tool_Comparisons.pdf", paper = "a4")
 for (exam in examinations) {
   exam_data <- data %>% filter(Examination == exam)
   
@@ -151,9 +178,9 @@ for (exam in examinations) {
         Time = first, Mem = first, Status = first, 
         CardP = first, CardT = first, CardA = first, 
         NbPInv = first, NbTInv = first, Examination = first
-      )
+      ),
+      values_fill = list(Status = "NA")
     ) %>%
-    mutate(across(contains("Status"), ~replace_na(., "UNK"))) %>%
     mutate(across(where(is.numeric), ~replace_na(., 0)))
   
   tools <- unique(exam_data$Tool)
@@ -166,10 +193,22 @@ for (exam in examinations) {
     next
   }
   
-  tool_stats <- map_df(tools, ~get_tool_stats(.x, wide_data))
+  tool_stats <- map_df(tools, ~get_tool_stats(.x, wide_data, exam_data))
   tool_stats <- tool_stats %>% mutate(across(everything(), ~replace_na(., 0)))
   cat("Examination:", exam, "\n")
   print(tool_stats)
+  
+  # Generate LaTeX table file with dynamic column names
+  tex_file <- paste0("table_", exam, ".tex")
+  col_names <- names(tool_stats) %>%
+    sub("Mean_Time", "Mean Time (ms)", .) %>%
+    sub("Mean_Mem", "Mean Mem (KB)", .) %>%
+    sub("Total_Runs", "Total Runs", .) %>%
+    sub("Status_", "", .)
+  kable(tool_stats, "latex", booktabs = TRUE,
+        caption = paste("Tool Statistics for", exam),
+        col.names = col_names) %>%
+    save_kable(tex_file)
   
   combinations <- combn(tools, 2, simplify = FALSE)
   for (combo in combinations) {
@@ -187,3 +226,4 @@ for (exam in examinations) {
   }
 }
 dev.off()
+
