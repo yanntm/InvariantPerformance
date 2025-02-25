@@ -2,7 +2,7 @@
 # run.sh: Run performance tests on models for a given mode and a selected set of tools.
 #
 # Usage:
-#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t TIMEOUT]
+#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t TIMEOUT] [--extra-petri-flags=FLAGS]
 #
 # MODE must be one of:
 #   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -23,14 +23,18 @@
 # -t TIMEOUT:
 #   Set timeout in seconds (default: 120).
 #
+# --extra-petri-flags=FLAGS:
+#   Additional flags for PetriSpot tools (e.g., "--noSingleSignRow --loopLimit=500").
+#   Logs will include a suffix based on these flags (e.g., ModelName.nSSR_lL500.petri64).
+#
 # Examples:
 #   ./run.sh FLOWS
 #   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64 -t 300
-#   ./run.sh PFLOWS --mem=ANY -t 60
+#   ./run.sh PFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500"
 
 print_usage() {
     cat <<EOF
-Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t=TIMEOUT] [-solution]
+Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t=TIMEOUT] [-solution] [--extra-petri-flags=FLAGS]
 
 MODE must be one of:
   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -53,10 +57,14 @@ Tool names and their meanings: (default : all tools)
 -solution:
   Collect solution files (*.sol) alongside logs.
 
+--extra-petri-flags=FLAGS:
+  Additional flags for PetriSpot tools (e.g., "--noSingleSignRow --loopLimit=500").
+  Logs will include a suffix based on these flags (e.g., ModelName.nSSR_lL500.petri64).
+
 Examples:
   $0 FLOWS
   $0 PSEMIFLOWS --tools=tina4ti2,petri64 -t=300 -solution
-  $0 PFLOWS --mem=ANY -t=60
+  $0 PFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500"
 EOF
 }
 
@@ -82,6 +90,7 @@ TOOLS_TO_RUN="tina,tina4ti2,itstools,petri32,petri64,petri128,gspn"
 MEM_LIMIT="16G"
 TIMEOUT_SEC=120
 SOLUTION=false
+EXTRA_PETRI_FLAGS=""
 
 for arg in "$@"; do
   case "$arg" in
@@ -94,12 +103,15 @@ for arg in "$@"; do
     -t=*)
       TIMEOUT_SEC="${arg#*=}"
       ;;
+    --extra-petri-flags=*)
+      EXTRA_PETRI_FLAGS="${arg#*=}"
+      ;;
     -h|--help)
       print_usage
       exit 0
       ;;
-    -solution) 
-      SOLUTION=true 
+    -solution)
+      SOLUTION=true
       ;;
     *)
       echo "Unknown argument: $arg"
@@ -241,6 +253,44 @@ contains_tool() {
   return 1
 }
 
+# --- Utility: Compress extra flags into a unique suffix ---
+compress_flags() {
+  local flags="$1"
+  local compressed=""
+  for flag in $flags; do
+    if [[ $flag =~ --([a-zA-Z]+)(=?[0-9]*) ]]; then
+      local name="${BASH_REMATCH[1]}"
+      local value="${BASH_REMATCH[2]}"
+      # Take first letter of each word (split by camelCase or hyphens), preserve capitals
+      local abbr=$(echo "$name" | sed 's/\([a-z]\)[a-z]*/\1/g;s/-//g')
+      compressed="${compressed}${abbr}${value}"
+    fi
+  done
+  echo "$compressed"
+}
+
+# --- Function: Run PetriSpot for a given variant ---
+run_petrispot() {
+  local tool_name="$1"  # e.g., "petri32"
+  local petri_cmd="$2"  # e.g., "$PETRISPOT32"
+  local log_suffix="$3" # e.g., ".petri32"
+  local model_dir="$4"  # Model directory
+  local model="$5"      # Model name
+  local extra_suffix="$6"  # Extra flags suffix (e.g., ".nSSRlL500")
+
+  if contains_tool "$tool_name"; then
+    logfile="$LOGS/$model${extra_suffix}${log_suffix}"
+    if [ ! -f "$logfile" ]; then
+      $LIMITS "$petri_cmd" -i "$model_dir/model.pnml" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS \
+        > "$logfile" 2>&1
+      if [ "$SOLUTION" = true ]; then
+        python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
+          --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model${extra_suffix}${log_suffix}"
+      fi
+    fi
+  fi
+}
+
 # --- Process Each Model ---
 for model_dir in "$MODELDIR"/*/; do
     cd "$model_dir" || exit
@@ -266,13 +316,11 @@ for model_dir in "$MODELDIR"/*/; do
     if contains_tool tina4ti2; then
         logfile="$LOGS/$model.struct"
         if [ ! -f "$logfile" ]; then
-            # rm -f /tmp/f-* > /dev/null 2>&1
             export PATH=$ROOT/bin:$PATH
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
             $LIMITS "$tina_cmd" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I "$model_dir/model.pnml" \
                 > "$logfile" 2>&1
-            # rm -f /tmp/f-* > /dev/null 2>&1
             sync
             if [ "$SOLUTION" = true ]; then
                 python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
@@ -294,44 +342,16 @@ for model_dir in "$MODELDIR"/*/; do
         fi
     fi
 
-    # --- PetriSpot 32-bit ---
-    if contains_tool petri32; then
-        logfile="$LOGS/$model.petri32"
-        if [ ! -f "$logfile" ]; then
-            $LIMITS "$PETRISPOT32" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
-                > "$logfile" 2>&1
-            if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
-                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri32"
-            fi
-        fi
+    # Compute log suffix for PetriSpot tools if extra flags are provided
+    extra_flags_suffix=""
+    if [ -n "$EXTRA_PETRI_FLAGS" ]; then
+        extra_flags_suffix=".$(compress_flags "$EXTRA_PETRI_FLAGS")"
     fi
 
-    # --- PetriSpot 64-bit ---
-    if contains_tool petri64; then
-        logfile="$LOGS/$model.petri64"
-        if [ ! -f "$logfile" ]; then
-            $LIMITS "$PETRISPOT64" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
-                > "$logfile" 2>&1
-            if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
-                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri64"
-            fi
-        fi
-    fi
-
-    # --- PetriSpot 128-bit ---
-    if contains_tool petri128; then
-        logfile="$LOGS/$model.petri128"
-        if [ ! -f "$logfile" ]; then
-            $LIMITS "$PETRISPOT128" -i "$model_dir/model.pnml" $PETRISPOT_FLAG \
-                > "$logfile" 2>&1
-            if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
-                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.petri128"
-            fi
-        fi
-    fi
+    # --- Run PetriSpot variants ---
+    run_petrispot "petri32" "$PETRISPOT32" ".petri32" "$model_dir" "$model" "$extra_flags_suffix"
+    run_petrispot "petri64" "$PETRISPOT64" ".petri64" "$model_dir" "$model" "$extra_flags_suffix"
+    run_petrispot "petri128" "$PETRISPOT128" ".petri128" "$model_dir" "$model" "$extra_flags_suffix"
 
     # --- GreatSPN ---
     if contains_tool gspn; then
