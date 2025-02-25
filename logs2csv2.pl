@@ -1,12 +1,84 @@
-#! /usr/bin/perl
+#!/usr/bin/perl
 
+use strict;
+use warnings;
+use Math::BigFloat;
 
-use strict vars;
+sub compute_solution_metrics {
+    my ($sol_file) = @_;
+    my %metrics = (
+        SolSizeKB     => -1,
+        SolSize       => -1,
+        SolPosSize    => -1,
+        SolMaxCoeff   => -1,
+        SolSumCoeff   => -1,
+        SolNbCoeff    => -1
+    );
 
-print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,Time,Mem,Status\n";
+    # Return defaults if file doesn’t exist or isn’t readable
+    return %metrics unless -f $sol_file && -r $sol_file;
 
+    # File size in KB (stat returns bytes)
+    my $size_bytes = (stat($sol_file))[7] // 0;
+    $metrics{SolSizeKB} = sprintf("%.3f", $size_bytes / 1024);
 
-my @files = <*petri*>;
+    # Open file and process line-by-line
+    open my $fh, '<', $sol_file or return %metrics;  # Return defaults on failure
+    my $num_lines = 0;
+    my $num_pos_lines = 0;
+    my $max_coeff = Math::BigFloat->new(0);
+    my $sum_coeff = Math::BigFloat->new(0);
+    my $num_terms = 0;
+
+    while (my $line = <$fh>) {
+        chomp $line;
+        next unless $line;  # Skip empty lines
+
+        $num_lines++;
+        # Remove constant and everything after =
+        $line =~ s/=.*$//g;
+
+        # Check for negatives for SolPosSize
+        my $has_negative = ($line =~ /-/);
+        $num_pos_lines++ unless $has_negative;
+
+        # Simplify: remove signs, compress spaces, trim
+        $line =~ s/[+-]//g;
+        $line =~ s/\s+/ /g;
+        $line =~ s/^\s+|\s+$//g;
+        next unless $line;  # Skip if line is now empty
+
+        # Split into terms
+        my @terms = split /\s/, $line;
+        $num_terms += scalar @terms;
+
+        # Process each term for coefficients
+        for my $term (@terms) {
+            my ($coeff) = $term =~ /^(\d+)\*/;  # Match optional coefficient before *
+            $coeff //= 1;  # Default to 1 if no explicit coefficient
+            my $abs_coeff = Math::BigFloat->new($coeff);
+            $max_coeff = $abs_coeff if $abs_coeff > $max_coeff;
+            $sum_coeff->badd($abs_coeff);
+        }
+    }
+    close $fh;
+
+    # Set metrics with conditional formatting
+    $metrics{SolSize} = $num_lines;
+    $metrics{SolPosSize} = $num_pos_lines;
+    $metrics{SolNbCoeff} = $num_terms;
+    $metrics{SolMaxCoeff} = $max_coeff >= 10000 ? sprintf("%.3e", $max_coeff) : $max_coeff->bstr();
+    $metrics{SolSumCoeff} = $sum_coeff >= 10000 ? sprintf("%.3e", $sum_coeff) : $sum_coeff->bstr();
+
+    return %metrics;
+}
+
+# Declare @files once at the top
+my @files;
+
+print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,SolSizeKB,SolSize,SolPosSize,SolMaxCoeff,SolSumCoeff,SolNbCoeff,Time,Mem,Status\n";
+
+@files = <*petri*>;
 foreach my $file (@files) {
     if ($file =~ /\.petri(32|64|128)$/) {
         my $model = $file;
@@ -114,13 +186,16 @@ foreach my $file (@files) {
             $time_internal = $ttime;
         }
 
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
+        # Compute solution metrics from .sol file
+        my %sol_metrics = compute_solution_metrics("$file.sol");
+
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
-my @files = <*its>;
+@files = <*its>;
 foreach my $file (@files) {
-    if ( $file =~ /its$/ ) {  
+    if ($file =~ /its$/) {  
         my $model = $file;
         $model =~ s/\.its//g;
         my $tool = "ItsTools";
@@ -152,7 +227,7 @@ foreach my $file (@files) {
         
         while (my $line = <IN>) {
             chomp $line;
-			if ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
+            if ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
                 $nbp = $1;
                 $ptime = $2;
                 next;
@@ -202,12 +277,14 @@ foreach my $file (@files) {
         # Use the Total runtime value as TimeInternal.
         my $time_internal = $tottime;
         
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
+        # Compute solution metrics from .sol file
+        my %sol_metrics = compute_solution_metrics("$file.sol");
+
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
-
-my @files = (<*struct>, <*tina>);
+@files = (<*struct>, <*tina>);
 foreach my $file (@files) {
     if ($file =~ /\.(struct|tina)$/) {
         my $model = $file;
@@ -310,12 +387,14 @@ foreach my $file (@files) {
         # For Tina logs, we choose to report -1 as the internal time.
         my $time_internal = -1;
         
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
+        # Compute solution metrics from .sol file
+        my %sol_metrics = compute_solution_metrics("$file.sol");
+
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
-
-my @files = <*gspn>;
+@files = <*gspn>;
 foreach my $file (@files) {
     my $model = $file;
     $model =~ s/\.gspn//g;
@@ -416,5 +495,8 @@ foreach my $file (@files) {
     # For GreatSPN, our TimeInternal is the TOTAL TIME from the log.
     my $time_internal = $ptime;
     
-    print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
+    # Compute solution metrics from .sol file
+    my %sol_metrics = compute_solution_metrics("$file.sol");
+
+    print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
 }
