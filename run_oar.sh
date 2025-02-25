@@ -16,9 +16,9 @@
 # For PetriSpot tools, a matrix of extra flags is applied (see PETRI_MATRIX below).
 #
 # Cluster constraints:
-#   - Only run on nodes with hostnames matching "big25" or "big26"
+#   - Only run on nodes with hostnames matching OARCONSTRAINTS
 #   - Use 4 cores on 1 node
-#   - Limit walltime to 12 hours (24:00:00)
+#   - Limit walltime to 24 hours (24:00:00)
 #
 # The work folder is set to:
 #   /home/ythierry/git/InvariantPerformance
@@ -46,7 +46,7 @@ OAR_CONSTRAINTS='{(host like "tall%")}/nodes=1/core=4,walltime=12:00:00'
 # PetriSpot configuration matrix (array of arrays)
 declare -A PETRI_MATRIX
 PETRI_MATRIX[0]="--noSingleSignRow ''"                        # 2 options: on or off
-PETRI_MATRIX[1]="--loopLimit=100 --loopLimit=500 --loopLimit=-1"  # 3 options
+PETRI_MATRIX[1]="--loopLimit=1 --loopLimit=500 --loopLimit=-1"  # 3 options
 PETRI_MATRIX[2]="--noTrivialCull ''"                          # 2 options
 
 # --- Utility: Check if a tool is a PetriSpot variant ---
