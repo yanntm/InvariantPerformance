@@ -5,7 +5,9 @@ use warnings;
 use Math::BigFloat;
 
 sub compute_solution_metrics {
-    my ($sol_file) = @_;
+    my ($log_file) = @_;
+    my $sol_file_gz = "$log_file.sol.gz";  # Gzipped solution file
+    my $sol_file = "$log_file.sol";        # Plain solution file
     my %metrics = (
         SolSizeKB     => -1,
         SolSize       => -1,
@@ -15,15 +17,24 @@ sub compute_solution_metrics {
         SolNbCoeff    => -1
     );
 
-    # Return defaults if file doesn’t exist or isn’t readable
-    return %metrics unless -f $sol_file && -r $sol_file;
+    # Check for .sol.gz first, decompress if found, otherwise use .sol
+    my $use_file = $sol_file;
+    if (-f $sol_file_gz && -r $sol_file_gz) {
+        system("gunzip -c $sol_file_gz > $sol_file");  # Decompress to temporary .sol
+        $use_file = $sol_file if -f $sol_file;         # Use it if successful
+    }
+    
+    # Return defaults if no usable file exists or isn’t readable
+    return %metrics unless -f $use_file && -r $use_file;
 
-    # File size in KB (stat returns bytes)
-    my $size_bytes = (stat($sol_file))[7] // 0;
+    # File size in KB (use .sol.gz size if it was decompressed, else .sol)
+    my $size_file = (-f $sol_file_gz) ? $sol_file_gz : $use_file;
+    my $size_bytes = (stat($size_file))[7] // 0;
     $metrics{SolSizeKB} = sprintf("%.3f", $size_bytes / 1024);
 
-    # Open file and process line-by-line
-    open my $fh, '<', $sol_file or return %metrics;  # Return defaults on failure
+    # Open the decompressed or plain file
+    open my $fh, '<', $use_file or return %metrics;
+    
     my $num_lines = 0;
     my $num_pos_lines = 0;
     my $max_coeff = Math::BigFloat->new(0);
@@ -62,6 +73,9 @@ sub compute_solution_metrics {
         }
     }
     close $fh;
+
+    # Clean up temporary .sol if we decompressed it
+    unlink $sol_file if -f $sol_file_gz && -f $sol_file;
 
     # Set metrics with conditional formatting
     $metrics{SolSize} = $num_lines;
@@ -187,7 +201,7 @@ foreach my $file (@files) {
         }
 
         # Compute solution metrics from .sol file
-        my %sol_metrics = compute_solution_metrics("$file.sol");
+        my %sol_metrics = compute_solution_metrics("$file");
 
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
@@ -278,7 +292,7 @@ foreach my $file (@files) {
         my $time_internal = $tottime;
         
         # Compute solution metrics from .sol file
-        my %sol_metrics = compute_solution_metrics("$file.sol");
+        my %sol_metrics = compute_solution_metrics("$file");
 
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
@@ -388,7 +402,7 @@ foreach my $file (@files) {
         my $time_internal = -1;
         
         # Compute solution metrics from .sol file
-        my %sol_metrics = compute_solution_metrics("$file.sol");
+        my %sol_metrics = compute_solution_metrics("$file");
 
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
@@ -496,7 +510,7 @@ foreach my $file (@files) {
     my $time_internal = $ptime;
     
     # Compute solution metrics from .sol file
-    my %sol_metrics = compute_solution_metrics("$file.sol");
+    my %sol_metrics = compute_solution_metrics("$file");
 
     print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
 }
