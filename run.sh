@@ -257,13 +257,23 @@ contains_tool() {
 compress_flags() {
   local flags="$1"
   local compressed=""
+  local sep=""  # Separator starts empty, becomes _ after first flag
+
   for flag in $flags; do
-    if [[ $flag =~ --([a-zA-Z]+)(=?[0-9]*) ]]; then
+    if [[ $flag =~ ^--([a-zA-Z]+)(=[0-9-]+)?$ ]]; then
       local name="${BASH_REMATCH[1]}"
-      local value="${BASH_REMATCH[2]}"
-      # Take first letter of each word (split by camelCase or hyphens), preserve capitals
-      local abbr=$(echo "$name" | sed 's/\([a-z]\)[a-z]*/\1/g;s/-//g')
-      compressed="${compressed}${abbr}${value}"
+      local value="${BASH_REMATCH[2]:-}"  # Capture value, default to empty if absent
+
+      # Replace -1 with inf, remove =
+      value=${value//=-1/inf}
+      value=${value//=/}
+
+      # Compress name: uppercase first letter, keep first letter of each lowercase segment or after hyphen, preserve capitals
+      local abbr=$(echo "$name" | sed 's/\([A-Z]\)[a-z]*/\1/g;s/-//g;s/^\(.\)/\L\1/')
+      
+      # Append to compressed string with separator
+      compressed="${compressed}${sep}${abbr}${value}"
+      sep="_"
     fi
   done
   echo "$compressed"
