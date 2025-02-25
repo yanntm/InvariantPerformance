@@ -26,9 +26,14 @@ WORKDIR="/home/ythierry/git/InvariantPerformance"
 
 # New modes to run
 MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
+#MODES=(PSEMIFLOWS)
 
 # Allowed tool identifiers
-TOOLS=(tina tina4ti2 itstools petri32 petri64 petri128 gspn)
+#TOOLS=(tina tina4ti2 itstools petri32 petri64 petri128 gspn)
+# TOOLS=(tina4ti2)
+#TOOLS=(petri32 petri64 petri128)
+#TOOLS=(tina tina4ti2 itstools petri64 gspn)
+TOOLS=(petri64 itstools)
 
 # OAR constraints: nodes "big25" or "big26", 4 cores, 12-hour walltime.
 OAR_CONSTRAINTS='{(host like "big25") OR (host like "big26")}/nodes=1/core=4,walltime=12:00:00'
@@ -36,6 +41,6 @@ OAR_CONSTRAINTS='{(host like "big25") OR (host like "big26")}/nodes=1/core=4,wal
 for MODE in "${MODES[@]}"; do
   for TOOL in "${TOOLS[@]}"; do
     echo "Submitting OAR job for Mode: $MODE, Tool: $TOOL"
-    oarsub -l "$OAR_CONSTRAINTS" "uname -a; cd $WORKDIR && ./run.sh $MODE --tools=$TOOL --mem=ANY; exit"
+    oarsub -l "$OAR_CONSTRAINTS" "uname -a; cd $WORKDIR && ./run.sh $MODE --tools=$TOOL --mem=ANY -solution; exit"
   done
 done
