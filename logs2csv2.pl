@@ -5,12 +5,20 @@ use strict vars;
 
 print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,Time,Mem,Status\n";
 
+
 my @files = <*petri*>;
 foreach my $file (@files) {
-    if ( $file =~ /petri(32|64|128)$/ ) {
+    if ($file =~ /\.petri(32|64|128)$/) {
         my $model = $file;
-        my $tool = "PetriSpot$1";
-        $model =~ s/\.petri(32|64|128)//g;
+        my $suffix = "";
+        # Extract model name and optional suffix
+        if ($file =~ /(.*)\.([^.]*)\.petri(32|64|128)$/) {
+            $model = $1;           # e.g., ModelName
+            $suffix = "_$2" if $2;  # e.g., _nSSR_lL500 (empty if no suffix)
+        } else {
+            $model =~ s/\.petri(32|64|128)//g;
+        }
+        my $tool = "PetriSpot$1$suffix";  # e.g., PetriSpot64 or PetriSpot64_nSSR_lL500
         my $status = "UNK";
         my $ptime = -1, my $ttime = -1, my $nbp = -1, my $nbt = -1, my $tottime = -1, my $tmem = -1;
         my $timecmd = -1;
@@ -18,7 +26,7 @@ foreach my $file (@files) {
         my $examination = "UNK";
         my $overflow = 0;
 
-        # Open the file and read the first line to determine the examination mode.
+        # Rest of the file processing remains unchanged
         open IN, "< $file";
         my $first_line = <IN>;
         if ($first_line =~ /--Pflows/ and $first_line =~ /--Tflows/) {
@@ -109,7 +117,6 @@ foreach my $file (@files) {
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$timecmd,$tmem,$status\n";
     }
 }
-
 
 my @files = <*its>;
 foreach my $file (@files) {
