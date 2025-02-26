@@ -36,8 +36,11 @@ MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
 #TOOLS=(tina tina4ti2 itstools petri32 petri64 petri128 gspn)
 # TOOLS=(tina4ti2)
 #TOOLS=(petri32 petri64 petri128)
-TOOLS=(tina tina4ti2 itstools petri64 gspn)
+TOOLS=(tina tina4ti2 petri64 gspn)
 #TOOLS=(petri64 itstools)
+
+# Model filter ranges to partition the workload
+MODEL_FILTERS=("A-D" "E-L" "M-R" "S-Z")
 
 # OAR constraints: nodes "big25" or "big26", 4 cores, 12-hour walltime.
 # OAR_CONSTRAINTS='{(host like "big25") OR (host like "big26")}/nodes=1/core=4,walltime=12:00:00'
@@ -119,11 +122,12 @@ for MODE in "${MODES[@]}"; do
       COMBINATIONS=("")
     fi
 
-    # Submit one job per combination
+    # Submit one job per combination and model filter
     for EXTRA_FLAGS in "${COMBINATIONS[@]}"; do
-      echo "Submitting OAR job for Mode: $MODE, Tool: $TOOL${EXTRA_FLAGS:+, Extra Flags: $EXTRA_FLAGS}"
-      oarsub -l "$OAR_CONSTRAINTS" "uname -a; cd $WORKDIR && ./run.sh $MODE --tools=$TOOL --mem=ANY -solution $EXTRA_FLAGS; exit"
+      for MODEL_FILTER in "${MODEL_FILTERS[@]}"; do
+        echo "Submitting OAR job for Mode: $MODE, Tool: $TOOL, Filter: $MODEL_FILTER${EXTRA_FLAGS:+, Extra Flags: $EXTRA_FLAGS}"
+        oarsub -l "$OAR_CONSTRAINTS" "uname -a; cd $WORKDIR && ./run.sh $MODE --tools=$TOOL --mem=ANY -solution --model-filter=$MODEL_FILTER $EXTRA_FLAGS; exit"
+      done
     done
   done
 done
-
