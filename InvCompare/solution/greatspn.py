@@ -7,12 +7,16 @@ from parsing.parser_greatspn import parse_greatspn_net, parse_greatspn_invariant
 
 def create_solution_for_greatspn(log_path: str, model_path: str, mode: str) -> None:
     """
-    Create a .sol file from GreatSPN invariant files (.pba, .tba, .pin, .tin).
+    Create a .sol file from GreatSPN invariant files (.pba, .tba, .pin, .tin) if they exist.
     
     Args:
         log_path: Path to the GreatSPN log file (e.g., logs/model.gspn, unused).
         model_path: Path to the model folder (contains model.net and invariant files).
         mode: Calculation mode (e.g., "pflows", "tsemiflows").
+    
+    Raises:
+        FileNotFoundError: If model.net is missing (deployment error).
+        ValueError: If mode is unsupported.
     """
     # Map mode to invariant file extension
     mode_to_ext = {
@@ -29,8 +33,13 @@ def create_solution_for_greatspn(log_path: str, model_path: str, mode: str) -> N
     net_file = os.path.join(model_path, "model.net")
     sol_file = f"{log_path}.sol"
     
-    if not os.path.exists(inv_file) or not os.path.exists(net_file):
-        raise FileNotFoundError(f"Missing required files: {inv_file} or {net_file}")
+    # Check model.net first—deployment error if missing
+    if not os.path.exists(net_file):
+        raise FileNotFoundError(f"Missing required model file: {net_file}")
+    
+    # Skip if invariant file doesn’t exist (e.g., due to timeout)—no empty .sol file
+    if not os.path.exists(inv_file):
+        return
     
     # Parse names from .net
     place_names, transition_names = parse_greatspn_net(net_file)
@@ -48,5 +57,3 @@ def create_solution_for_greatspn(log_path: str, model_path: str, mode: str) -> N
             if is_place_flow and inv.const == "?":
                 line = line.replace(" = ?", " = ?")
             f.write(line + "\n")
-            
-     
