@@ -80,6 +80,9 @@ Examples:
 EOF
 }
 
+# Echo the full command invocation with all arguments to stdout
+echo "Running: $0 $@"
+
 # Print usage if no arguments provided or help is requested.
 if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     print_usage
@@ -321,8 +324,9 @@ run_petrispot() {
   if contains_tool "$tool_name"; then
     logfile="$LOGS/$model${extra_suffix}${log_suffix}"
     if [ ! -f "$logfile" ]; then
-      $LIMITS "$petri_cmd" -i "$model_dir/model.pnml" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS \
-        > "$logfile" 2>&1
+      cmd="$LIMITS \"$petri_cmd\" -i \"$model_dir/model.pnml\" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS > \"$logfile\" 2>&1"
+      echo "Running $tool_name: $cmd"
+      eval "$cmd"
       if [ "$SOLUTION" = true ]; then
         python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
           --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model${extra_suffix}${log_suffix}"
@@ -349,8 +353,9 @@ for model_dir in "$MODELDIR"/*/; do
         if [ ! -f "$logfile" ]; then
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
-            $LIMITS "$tina_cmd" @MLton fixed-heap 15G -- $TINA_FLAG -mp "$model_dir/model.pnml" \
-                > "$logfile" 2>&1
+            cmd="$LIMITS \"$tina_cmd\" @MLton fixed-heap 15G -- $TINA_FLAG -mp \"$model_dir/model.pnml\" > \"$logfile\" 2>&1"
+            echo "Running tina: $cmd"
+            eval "$cmd"
             if [ "$SOLUTION" = true ]; then
                 python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.tina"
@@ -365,8 +370,9 @@ for model_dir in "$MODELDIR"/*/; do
             export PATH=$ROOT/bin:$PATH
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
-            $LIMITS "$tina_cmd" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I "$model_dir/model.pnml" \
-                > "$logfile" 2>&1
+            cmd="$LIMITS \"$tina_cmd\" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I \"$model_dir/model.pnml\" > \"$logfile\" 2>&1"
+            echo "Running tina4ti2: $cmd"
+            eval "$cmd"
             sync
             if [ "$SOLUTION" = true ]; then
                 python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
@@ -379,8 +385,9 @@ for model_dir in "$MODELDIR"/*/; do
     if contains_tool itstools; then
         logfile="$LOGS/$model.its"
         if [ ! -f "$logfile" ]; then
-            $LIMITS "$ITSTOOLS" -pnfolder "$model_dir" $ITS_FLAG \
-                > "$logfile" 2>&1
+            cmd="$LIMITS \"$ITSTOOLS\" -pnfolder \"$model_dir\" $ITS_FLAG > \"$logfile\" 2>&1"
+            echo "Running itstools: $cmd"
+            eval "$cmd"
             if [ "$SOLUTION" = true ]; then
                 python3 "$ROOT/InvCompare/collectSolution.py" --tool=itstools --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.its"
@@ -403,8 +410,9 @@ for model_dir in "$MODELDIR"/*/; do
     if contains_tool gspn; then
         logfile="$LOGS/$model.gspn"
         if [ ! -f "$logfile" ]; then
-            $LIMITS "$DSPN" -load model $GSPN_FLAG \
-                > "$logfile" 2>&1
+            cmd="$LIMITS \"$DSPN\" -load model $GSPN_FLAG > \"$logfile\" 2>&1"
+            echo "Running gspn: $cmd"
+            eval "$cmd"
             if [ "$SOLUTION" = true ]; then
                 python3 "$ROOT/InvCompare/collectSolution.py" --tool=greatspn --log="$logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.gspn"
