@@ -2,7 +2,7 @@
 # run.sh: Run performance tests on models for a given mode and a selected set of tools.
 #
 # Usage:
-#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t TIMEOUT] [--extra-petri-flags=FLAGS]
+#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t TIMEOUT] [--extra-petri-flags=FLAGS] [--model-filter=RANGE]
 #
 # MODE must be one of:
 #   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -27,14 +27,20 @@
 #   Additional flags for PetriSpot tools (e.g., "--noSingleSignRow --loopLimit=500").
 #   Logs will include a suffix based on these flags (e.g., ModelName.nSSR_lL500.petri64).
 #
+# --model-filter=RANGE:
+#   Process only models whose names start with a letter in the specified range (inclusive).
+#   Format: X-Y (e.g., A-D, E-L, M-R, S-Z). Case-insensitive.
+#   Default: process all models.
+#
 # Examples:
 #   ./run.sh FLOWS
 #   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64 -t 300
 #   ./run.sh PFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500"
+#   ./run.sh TFLOWS --model-filter=A-D
 
 print_usage() {
     cat <<EOF
-Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t=TIMEOUT] [-solution] [--extra-petri-flags=FLAGS]
+Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t=TIMEOUT] [-solution] [--extra-petri-flags=FLAGS] [--model-filter=RANGE]
 
 MODE must be one of:
   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -61,10 +67,16 @@ Tool names and their meanings: (default : all tools)
   Additional flags for PetriSpot tools (e.g., "--noSingleSignRow --loopLimit=500").
   Logs will include a suffix based on these flags (e.g., ModelName.nSSR_lL500.petri64).
 
+--model-filter=RANGE:
+  Process only models whose names start with a letter in the specified range (inclusive).
+  Format: X-Y (e.g., A-D, E-L, M-R, S-Z). Case-insensitive.
+  Default: process all models.
+
 Examples:
   $0 FLOWS
   $0 PSEMIFLOWS --tools=tina4ti2,petri64 -t=300 -solution
   $0 PFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500"
+  $0 TFLOWS --model-filter=A-D
 EOF
 }
 
@@ -91,6 +103,8 @@ MEM_LIMIT="16G"
 TIMEOUT_SEC=120
 SOLUTION=false
 EXTRA_PETRI_FLAGS=""
+MODEL_FILTER_START=""
+MODEL_FILTER_END=""
 
 for arg in "$@"; do
   case "$arg" in
@@ -105,6 +119,22 @@ for arg in "$@"; do
       ;;
     --extra-petri-flags=*)
       EXTRA_PETRI_FLAGS="${arg#*=}"
+      ;;
+    --model-filter=*)
+      range="${arg#*=}"
+      if [[ "$range" =~ ^([A-Za-z])-([A-Za-z])$ ]]; then
+        MODEL_FILTER_START=$(echo "${BASH_REMATCH[1]}" | tr '[:lower:]' '[:upper:]')
+        MODEL_FILTER_END=$(echo "${BASH_REMATCH[2]}" | tr '[:lower:]' '[:upper:]')
+        if [[ "$MODEL_FILTER_START" > "$MODEL_FILTER_END" ]]; then
+          echo "Error: Model filter range start ($MODEL_FILTER_START) must be less than or equal to end ($MODEL_FILTER_END)"
+          print_usage
+          exit 1
+        fi
+      else
+        echo "Error: Invalid model filter range format. Use X-Y (e.g., A-D)"
+        print_usage
+        exit 1
+      fi
       ;;
     -h|--help)
       print_usage
@@ -303,8 +333,14 @@ run_petrispot() {
 
 # --- Process Each Model ---
 for model_dir in "$MODELDIR"/*/; do
-    cd "$model_dir" || exit
     model=$(basename "$model_dir")
+    if [ -n "$MODEL_FILTER_START" ] && [ -n "$MODEL_FILTER_END" ]; then
+        first_letter=$(echo "$model" | cut -c1 | tr '[:lower:]' '[:upper:]')
+        if [[ "$first_letter" < "$MODEL_FILTER_START" || "$first_letter" > "$MODEL_FILTER_END" ]]; then
+            continue
+        fi
+    fi
+    cd "$model_dir" || exit
     echo "Processing model: $model"
     
     # --- Tina (without 4ti2 integration) ---
