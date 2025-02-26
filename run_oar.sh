@@ -40,7 +40,7 @@ TOOLS=(tina tina4ti2 petri64 gspn)
 #TOOLS=(petri64 itstools)
 
 # Model filter ranges to partition the workload
-MODEL_FILTERS=("A-D" "E-L" "M-R" "S-Z")
+MODEL_FILTERS=("A-B" "C-D" "E-F" "G-I" "J-L" "M-O" "P-R" "S-U" "V-Z")
 
 # OAR constraints: nodes "big25" or "big26", 4 cores, 12-hour walltime.
 # OAR_CONSTRAINTS='{(host like "big25") OR (host like "big26")}/nodes=1/core=4,walltime=12:00:00'
