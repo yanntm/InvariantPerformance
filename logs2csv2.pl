@@ -26,9 +26,8 @@ sub compute_solution_metrics {
     # Return defaults if no usable file exists or isn’t readable
     return %metrics unless -f $use_file && -r $use_file;
 
-    # File size in KB (use .sol.gz size if it was decompressed, else .sol)
-    my $size_file = (-f $sol_file_gz) ? $sol_file_gz : $use_file;
-    my $size_bytes = (stat($size_file))[7] // 0;
+    # File size in KB (use decompressed .sol size, whether decompressed here or pre-existing)
+    my $size_bytes = (stat($use_file))[7] // 0;
     $metrics{SolSizeKB} = sprintf("%.3f", $size_bytes / 1024);
 
     # Open the decompressed or plain file
@@ -87,7 +86,6 @@ sub compute_solution_metrics {
 
     return %metrics;
 }
-
 # Declare @files once at the top
 my @files;
 
