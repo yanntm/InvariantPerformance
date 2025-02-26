@@ -2,7 +2,6 @@
 
 use strict;
 use warnings;
-use Math::BigFloat;
 
 sub compute_solution_metrics {
     my ($log_file) = @_;
@@ -23,7 +22,7 @@ sub compute_solution_metrics {
         system("gunzip -c $sol_file_gz > $sol_file");  # Decompress to temporary .sol
         $use_file = $sol_file if -f $sol_file;         # Use it if successful
     }
-    
+
     # Return defaults if no usable file exists or isn’t readable
     return %metrics unless -f $use_file && -r $use_file;
 
@@ -34,11 +33,11 @@ sub compute_solution_metrics {
 
     # Open the decompressed or plain file
     open my $fh, '<', $use_file or return %metrics;
-    
+
     my $num_lines = 0;
     my $num_pos_lines = 0;
-    my $max_coeff = Math::BigFloat->new(0);
-    my $sum_coeff = Math::BigFloat->new(0);
+    my $max_coeff = 0.0;       # Native double
+    my $sum_coeff = 0.0;       # Native double for total sum
     my $num_terms = 0;
 
     while (my $line = <$fh>) {
@@ -47,7 +46,7 @@ sub compute_solution_metrics {
 
         $num_lines++;
         # Remove constant and everything after =
-        $line =~ s/=.*$//g;
+        $line =~ s/=.*$//;  # Drop /g, single match
 
         # Check for negatives for SolPosSize
         my $has_negative = ($line =~ /-/);
@@ -56,21 +55,23 @@ sub compute_solution_metrics {
         # Simplify: remove signs, compress spaces, trim
         $line =~ s/[+-]//g;
         $line =~ s/\s+/ /g;
-        $line =~ s/^\s+|\s+$//g;
+        $line =~ s/^\s+|\s+$//;  # Drop /g, single trim
         next unless $line;  # Skip if line is now empty
 
         # Split into terms
         my @terms = split /\s/, $line;
         $num_terms += scalar @terms;
 
-        # Process each term for coefficients
+        # Sum coefficients for this line into a double
+        my $line_sum = 0.0;  # Native double for line-specific sum
         for my $term (@terms) {
             my ($coeff) = $term =~ /^(\d+)\*/;  # Match optional coefficient before *
-            $coeff //= 1;  # Default to 1 if no explicit coefficient
-            my $abs_coeff = Math::BigFloat->new($coeff);
+            $coeff = 1 unless defined $coeff;   # Default to 1 if no explicit coefficient
+            my $abs_coeff = abs($coeff + 0.0);  # Convert to double, take absolute value
             $max_coeff = $abs_coeff if $abs_coeff > $max_coeff;
-            $sum_coeff->badd($abs_coeff);
+            $line_sum += $abs_coeff;            # Add to line-specific sum
         }
+        $sum_coeff += $line_sum;  # Add line sum to total after processing all terms
     }
     close $fh;
 
@@ -81,8 +82,8 @@ sub compute_solution_metrics {
     $metrics{SolSize} = $num_lines;
     $metrics{SolPosSize} = $num_pos_lines;
     $metrics{SolNbCoeff} = $num_terms;
-    $metrics{SolMaxCoeff} = $max_coeff >= 10000 ? sprintf("%.3e", $max_coeff) : $max_coeff->bstr();
-    $metrics{SolSumCoeff} = $sum_coeff >= 10000 ? sprintf("%.3e", $sum_coeff) : $sum_coeff->bstr();
+    $metrics{SolMaxCoeff} = $max_coeff >= 10000 ? sprintf("%.3e", $max_coeff) : $max_coeff;
+    $metrics{SolSumCoeff} = $sum_coeff >= 10000 ? sprintf("%.3e", $sum_coeff) : $sum_coeff;
 
     return %metrics;
 }
@@ -96,15 +97,18 @@ print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,SolSi
 foreach my $file (@files) {
     if ($file =~ /\.petri(32|64|128)$/) {
         my $model = $file;
-        my $suffix = "";
-        # Extract model name and optional suffix
-        if ($file =~ /(.*)\.([^.]*)\.petri(32|64|128)$/) {
+        my $flags = "";
+        my $tool_base;
+        # Extract model name, flags, and tool base
+        if ($file =~ /^(.*)\.([^.]*)\.petri(32|64|128)$/) {
             $model = $1;           # e.g., ModelName
-            $suffix = "_$2" if $2;  # e.g., _nSSR_lL500 (empty if no suffix)
+            $flags = $2 if $2;     # e.g., loopL1 or loopL500_noSSR (empty if no flags)
+            $tool_base = "PetriSpot$3";  # e.g., PetriSpot64
         } else {
             $model =~ s/\.petri(32|64|128)//g;
+            $tool_base = "PetriSpot$1";
         }
-        my $tool = "PetriSpot$1$suffix";  # e.g., PetriSpot64 or PetriSpot64_nSSR_lL500
+        my $tool = $flags ? "${tool_base}_$flags" : $tool_base;  # e.g., PetriSpot64_loopL1 or PetriSpot64
         my $status = "UNK";
         my $ptime = -1, my $ttime = -1, my $nbp = -1, my $nbt = -1, my $tottime = -1, my $tmem = -1;
         my $timecmd = -1;
@@ -177,7 +181,7 @@ foreach my $file (@files) {
                 $tmem = $2;
                 if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
                     my $frac_ms = $3 * (10 ** (3 - length($3)));
-                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;        
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;
                 }
             }
         }
@@ -209,7 +213,7 @@ foreach my $file (@files) {
 
 @files = <*its>;
 foreach my $file (@files) {
-    if ($file =~ /its$/) {  
+    if ($file =~ /its$/) {
         my $model = $file;
         $model =~ s/\.its//g;
         my $tool = "ItsTools";
@@ -220,7 +224,7 @@ foreach my $file (@files) {
         my $cardp = -1, my $cardt = -1, my $carda = -1;
         my $examination = "UNK";
         my $ofp = 0, my $oft = 0;
-        
+
         open IN, "< $file";
         my $first_line = <IN>;
         if ($first_line =~ /--Pflows/ and $first_line =~ /--Tflows/) {
@@ -238,7 +242,7 @@ foreach my $file (@files) {
         }
         # Reset file pointer to process all lines.
         seek(IN, 0, 0);
-        
+
         while (my $line = <IN>) {
             chomp $line;
             if ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
@@ -276,21 +280,21 @@ foreach my $file (@files) {
                 $tmem = $2;
                 if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
                     my $frac_ms = $3 * (10 ** (3 - length($3)));
-                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;        
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;
                 }
             }
         }
         close IN;
-        
+
         if ($ofp || $oft) {
             $status = "OF";
             $nbp = -1;
             $nbt = -1;
         }
-        
+
         # Use the Total runtime value as TimeInternal.
         my $time_internal = $tottime;
-        
+
         # Compute solution metrics from .sol file
         my %sol_metrics = compute_solution_metrics("$file");
 
@@ -305,16 +309,16 @@ foreach my $file (@files) {
         $model =~ s/\.(struct|tina)$//;
         my $tool = ($file =~ /\.struct$/) ? "tina4ti2" : "tina";
         my $status = "UNK";
-        my $nbp   = -1; 
+        my $nbp   = -1;
         my $nbt   = -1;
         my $tmem  = -1;
         my $timecmd = -1;
-        my $cardp = -1; 
-        my $cardt = -1; 
+        my $cardp = -1;
+        my $cardt = -1;
         my $carda = -1;
         my $examination = "UNK";
         my $of = 0;
-        
+
         open IN, "< $file";
         # Determine Examination from the first line of the log.
         my $first_line = <IN>;
@@ -335,7 +339,7 @@ foreach my $file (@files) {
         }
         # Reset file pointer to process all lines.
         seek(IN, 0, 0);
-        
+
         while (my $line = <IN>) {
             chomp $line;
             if ($line =~ /(\d+) places, (\d+) transitions, (\d+) arcs/) {
@@ -386,21 +390,21 @@ foreach my $file (@files) {
                 $tmem = $2;
                 if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
                     my $frac_ms = $3 * (10 ** (3 - length($3)));
-                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;        
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;
                 }
             }
         }
         close IN;
-        
+
         if ($of == 1) {
             $status = "OF";
             $nbp = -1;
             $nbt = -1;
         }
-        
+
         # For Tina logs, we choose to report -1 as the internal time.
         my $time_internal = -1;
-        
+
         # Compute solution metrics from .sol file
         my %sol_metrics = compute_solution_metrics("$file");
 
@@ -418,9 +422,9 @@ foreach my $file (@files) {
     my ($cardp, $cardt, $carda) = (-1, -1, -1);  # Arc info is NA → -1
     my $examination = "UNK";
     my $of = 0;
-    
+
     open my $fh, '<', $file or die "Could not open file '$file': $!";
-    
+
     # Determine Examination from the first line (the command line invocation)
     my $first_line = <$fh>;
     if (defined $first_line) {
@@ -441,7 +445,7 @@ foreach my $file (@files) {
             $examination = "UNK";
         }
     }
-    
+
     # Process the rest of the log
     while (my $line = <$fh>) {
         chomp $line;
@@ -485,14 +489,14 @@ foreach my $file (@files) {
         }
     }
     close $fh;
-    
+
     # If any overflow occurred, override invariant counts and status.
     if ($of == 1) {
         $status = "OF";
         $nbp = -1;
         $nbt = -1;
     }
-    
+
     # Determine final status based on mode and invariant counts (unless already TO or OF)
     if ($status ne "TO" and $status ne "OF") {
         if ($examination eq "FLOWS") {
@@ -505,12 +509,13 @@ foreach my $file (@files) {
             $status = "ERR";
         }
     }
-    
+
     # For GreatSPN, our TimeInternal is the TOTAL TIME from the log.
     my $time_internal = $ptime;
-    
+
     # Compute solution metrics from .sol file
     my %sol_metrics = compute_solution_metrics("$file");
 
     print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
 }
+
