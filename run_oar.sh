@@ -24,20 +24,20 @@
 #   /home/ythierry/git/InvariantPerformance
 # (This folder contains run.sh and config.sh; deploy.sh has been run ahead of time)
 
-set -x
+#set -x
 
 WORKDIR="/home/ythierry/git/InvariantPerformance"
 
 # New modes to run
-#MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
-MODES=(PSEMIFLOWS)
+MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
+#MODES=(PSEMIFLOWS)
 
 # Allowed tool identifiers
 #TOOLS=(tina tina4ti2 itstools petri32 petri64 petri128 gspn)
 # TOOLS=(tina4ti2)
 #TOOLS=(petri32 petri64 petri128)
-#TOOLS=(tina tina4ti2 itstools petri64 gspn)
-TOOLS=(petri64 itstools)
+TOOLS=(tina tina4ti2 itstools petri64 gspn)
+#TOOLS=(petri64 itstools)
 
 # OAR constraints: nodes "big25" or "big26", 4 cores, 12-hour walltime.
 # OAR_CONSTRAINTS='{(host like "big25") OR (host like "big26")}/nodes=1/core=4,walltime=12:00:00'
@@ -112,7 +112,7 @@ mapfile -t PETRI_COMBINATIONS < <(generate_petri_combinations)
 for MODE in "${MODES[@]}"; do
   for TOOL in "${TOOLS[@]}"; do
     # Set COMBINATIONS based on tool type
-    local -a COMBINATIONS
+    COMBINATIONS=()  # No 'local' here
     if is_petrispot "$TOOL"; then
       COMBINATIONS=("${PETRI_COMBINATIONS[@]}")
     else
@@ -126,3 +126,4 @@ for MODE in "${MODES[@]}"; do
     done
   done
 done
+
