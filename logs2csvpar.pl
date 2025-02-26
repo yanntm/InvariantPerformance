@@ -5,9 +5,7 @@ use warnings;
 use POSIX qw(:sys_wait_h);  # For WNOHANG in waitpid
 use Getopt::Long;          # For command-line options
 
-# Default parallelism: number of CPUs or 4 if detection fails
-use Sys::CPU;  # Optional, fallback if not installed
-my $default_processes = eval { Sys::CPU::cpu_count() } // 4;
+my $default_processes = 4;
 my $num_processes = $default_processes;
 
 # Parse command-line option for parallelism
@@ -211,7 +209,7 @@ sub parse_petri_file {
 
 sub parse_its_file {
     my ($file) = @_;
-    if ($file =~ /its$/) {
+    if ($file =~ /\.its$/) {
         my $model = $file;
         $model =~ s/\.its//g;
         my $tool = "ItsTools";
@@ -500,16 +498,16 @@ sub parse_gspn_file {
 }
 
 # Main script
-# Create pipe for children to write CSV lines
-pipe(my $pipe_read, my $pipe_write) or die "Cannot create pipe: $!";
+# Ensure stdout is unbuffered for atomic writes
+$| = 1;
+
+# Write CSV header to stdout
+print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,SolSizeKB,SolSize,SolPosSize,SolMaxCoeff,SolSumCoeff,SolNbCoeff,Time,Mem,Status\n";
+
+# Collect all files once
 my @all_files = (<*petri*>, <*its>, <*struct>, <*tina>, <*gspn>);
 my $total_files = scalar @all_files;
 my $chunk_size = int(($total_files + $num_processes - 1) / $num_processes);  # Ceiling division
-
-# Write CSV header to file
-open my $csv_fh, '>', 'invar.csv' or die "Cannot open invar.csv: $!";
-print $csv_fh "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,SolSizeKB,SolSize,SolPosSize,SolMaxCoeff,SolSumCoeff,SolNbCoeff,Time,Mem,Status\n";
-close $csv_fh;
 
 # Fork children to process files
 my @child_pids;
@@ -518,12 +516,6 @@ for (my $i = 0; $i < $num_processes && $i * $chunk_size < $total_files; $i++) {
     if (!defined $pid) {
         die "Fork failed: $!";
     } elsif ($pid == 0) {  # Child process
-        # Close read end of pipe in child
-        close $pipe_read;
-        # Redirect stdout to pipe write end
-        open STDOUT, '>&', $pipe_write or die "Cannot redirect stdout to pipe: $!";
-        close $pipe_write;  # Close original write handle after redirect
-
         # Process chunk of files
         my $start = $i * $chunk_size;
         my $end = ($i + 1) * $chunk_size - 1;
@@ -546,18 +538,7 @@ for (my $i = 0; $i < $num_processes && $i * $chunk_size < $total_files; $i++) {
     }
 }
 
-# Parent: Close write end of pipe
-close $pipe_write;
-
-# Parent: Read from pipe and append to invar.csv until EOF
-open my $csv_fh, '>>', 'invar.csv' or die "Cannot reopen invar.csv: $!";
-while (my $line = <$pipe_read>) {
-    print $csv_fh $line;
-}
-close $pipe_read;
-close $csv_fh;
-
-# Wait for all children to ensure cleanup
+# Parent: Wait for all children to finish
 foreach my $pid (@child_pids) {
     waitpid($pid, 0);
 }
