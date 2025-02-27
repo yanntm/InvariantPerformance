@@ -315,13 +315,13 @@ sub parse_tina_file {
         
         # Diagnostic traces for flag detection
         warn "Parsing first line for $file: '$first_line'";
-        my $has_f = $first_line =~ /\b-F\b/ ? 1 : 0;
-        my $has_s = $first_line =~ /\b-S\b/ ? 1 : 0;
-        my $has_p = $first_line =~ /\b-P\b/ ? 1 : 0;
-        my $has_t = $first_line =~ /\b-T\b/ ? 1 : 0;
+        my $has_f = $first_line =~ /\s+-F\s/ ? 1 : 0;
+        my $has_s = $first_line =~ /\s+-S\s/ ? 1 : 0;
+        my $has_p = $first_line =~ /\s+-P\s/ ? 1 : 0;
+        my $has_t = $first_line =~ /\s+-T\s/ ? 1 : 0;
         warn "Detected flags: -F=$has_f, -S=$has_s, -P=$has_p, -T=$has_t";
         
-        # Original logic with word boundaries
+        # Original logic with strict whitespace
         my $is_t_mode = 0;  # Default to P-based
         if ($has_f && $has_t) {
             $examination = "TFLOWS";
