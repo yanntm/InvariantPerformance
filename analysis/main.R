@@ -55,7 +55,6 @@ filters <- list(
 metrics <- c("SolSizeKB", "SolSize", "SolPosSize", "SolMaxCoeff", "SolSumCoeff", "SolNbCoeff")
 
 # Process each Examination (existing analysis)
-pdf("pdf/Tool_Comparisons.pdf", paper = "a4", width = 14, height = 20)  # Portrait A4
 for (exam in unique(data$Examination)) {
   exam_data <- data %>% filter(Examination == exam)
   wide_data <- exam_data %>%
@@ -89,7 +88,6 @@ for (exam in unique(data$Examination)) {
     plot_comparisons(wide_data, tool1, tool2, exam)
   }
 }
-dev.off()
 
 # New overviews across filters
 for (filter_name in names(filters)) {
