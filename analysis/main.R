@@ -32,6 +32,10 @@ if (tools_arg != "") {
 # Check data quality
 check_data_quality(data)
 
+# Create output directories
+dir.create("pdf", showWarnings = FALSE)
+dir.create("csv", showWarnings = FALSE)
+
 # Plot model descriptions
 plot_model_descriptions(data)
 
@@ -47,11 +51,11 @@ filters <- list(
 #  "P_Invariants" = quote(Examination %in% c("PSEMIFLOWS", "PFLOWS")),
 #  "Small_Models" = quote(CardP + CardT < 5000)
 
-# Metrics to analyze
-metrics <- c("SolSizeKB", "SolSize", "SolPosSize", "SolMaxCoeff", "SolSumCoeff", "SolNbCoeff", "Time")
+# Metrics to analyze (SolXX only)
+metrics <- c("SolSizeKB", "SolSize", "SolPosSize", "SolMaxCoeff", "SolSumCoeff", "SolNbCoeff")
 
 # Process each Examination (existing analysis)
-pdf("Tool_Comparisons.pdf", paper = "a4", width = 20, height = 14)
+pdf("pdf/Tool_Comparisons.pdf", paper = "a4", width = 14, height = 20)  # Portrait A4
 for (exam in unique(data$Examination)) {
   exam_data <- data %>% filter(Examination == exam)
   wide_data <- exam_data %>%
@@ -93,8 +97,6 @@ for (filter_name in names(filters)) {
   print_mean(filtered_data, filter_name)
   plot_numerics(filtered_data, filter_name)
   for (metric in metrics) {
-    better <- if (metric == "Time") "lower" else "higher"  # Adjust as needed
-    who_beats_who(filtered_data, metric, better, filter_name, na_loses = FALSE)  # Flag for NA handling
+    who_beats_who(filtered_data, metric, "lower", filter_name, na_loses = FALSE)  # Smaller is better
   }
 }
-

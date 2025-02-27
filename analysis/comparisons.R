@@ -35,8 +35,7 @@ who_beats_who <- function(df, metric, better = "lower", filter_name, na_loses = 
   }
   
   cat("Who Beats Who Matrix for", metric, "-", filter_name, "\n")
-  cat("Row beats column;", ifelse(better == "lower", "smaller is better", "larger is better"), "\n")
+  cat("Row beats column; smaller is better\n")
   print(type_matrix)
-  write.csv(type_matrix, paste0(metric, "_matrix_", filter_name, ".csv"), row.names = TRUE)
+  write.csv(type_matrix, paste0("csv/", metric, "_matrix_", filter_name, ".csv"), row.names = TRUE)
 }
-

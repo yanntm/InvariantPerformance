@@ -41,7 +41,7 @@ plot_comparisons <- function(df, tool1, tool2, filter_name) {
     mutate(Verdict_Color = Label)
   
   time_plot <- ggplot(fperf, aes(x = RepTime_1, y = RepTime_2, color = Verdict_Color)) +
-    geom_point(size = 3) +  # Larger points
+    geom_point(size = 3) +
     scale_x_continuous(trans = 'log10', 
                        breaks = c(10, 100, 1000, 10000, 60000, 120000),
                        labels = c("0.01s", "0.1s", "1s", "10s", "1min", "2min")) +
@@ -57,7 +57,7 @@ plot_comparisons <- function(df, tool1, tool2, filter_name) {
       axis.title = element_text(size = 35, face = "bold"),
       axis.text = element_text(size = 35, face = "bold"),
       axis.text.x = element_text(angle = 45, hjust = 1),
-      panel.border = element_rect(colour = "black", fill = NA, size = 1)  # Restore border
+      panel.border = element_rect(colour = "black", fill = NA, size = 1)
     )
   
   memory_plot <- ggplot(fperf, aes(x = Mem_1, y = Mem_2, color = Verdict_Color)) +
@@ -80,7 +80,7 @@ plot_comparisons <- function(df, tool1, tool2, filter_name) {
       panel.border = element_rect(colour = "black", fill = NA, size = 1)
     )
   
-  pdf(paste0("scatter_", filter_name, "_", tool1, "_vs_", tool2, ".pdf"), width = 20, height = 14)
+  pdf(paste0("pdf/scatter_", filter_name, "_", tool1, "_vs_", tool2, ".pdf"), width = 14, height = 20)
   grid.arrange(
     time_plot,
     memory_plot,
@@ -92,20 +92,22 @@ plot_comparisons <- function(df, tool1, tool2, filter_name) {
 }
 
 plot_numerics <- function(df, filter_name) {
-  pdf(paste0("Metrics_Plots_", filter_name, ".pdf"), width = 20, height = 14)
-  for (col in numeric_cols(df)) {
+  pdf(paste0("pdf/Metrics_Plots_", filter_name, ".pdf"), width = 20, height = 14)
+  exclude_cols <- c("CardP", "CardT", "CardA")  # Skip model description columns
+  for (col in setdiff(numeric_cols(df), exclude_cols)) {
     if (all(is.na(df[[col]]))) next  # Skip if all NA due to filter
     non_na_counts <- df %>%
       group_by(Tool) %>%
       summarise(Count = sum(!is.na(.data[[col]])), .groups = "drop")
-    p <- ggplot(df[!is.na(df[[col]]), ], aes(x = Tool, y = .data[[col]])) +
+    df_plot <- df[!is.na(df[[col]]), ]
+    df_plot$Tool <- paste(df_plot$Tool, " (", non_na_counts$Count[match(df_plot$Tool, non_na_counts$Tool)], ")", sep = "")
+    p <- ggplot(df_plot, aes(x = Tool, y = .data[[col]])) +
       geom_boxplot() +
       scale_y_continuous(trans = "log10") +
       labs(
         x = "",
         y = col,
-        title = paste("Distribution of", col, "-", filter_name),
-        caption = paste("Non-NA points per tool:", paste(non_na_counts$Tool, "(", non_na_counts$Count, ")", collapse = ", "))
+        title = paste("Distribution of", col, "-", filter_name)
       ) +
       theme_minimal() +
       theme(
@@ -120,7 +122,7 @@ plot_numerics <- function(df, filter_name) {
 }
 
 plot_model_descriptions <- function(df) {
-  pdf("Model_Descriptions.pdf", width = 20, height = 14)
+  pdf("pdf/Model_Descriptions.pdf", width = 20, height = 14)
   for (col in c("CardP", "CardT", "CardA")) {
     if (all(is.na(df[[col]]))) next
     p <- ggplot(df[!is.na(df[[col]]), ], aes(x = .data[[col]])) +

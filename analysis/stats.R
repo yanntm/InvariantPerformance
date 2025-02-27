@@ -5,7 +5,7 @@ library(dplyr)
 numeric_cols <- function(df) names(df)[sapply(df, is.numeric)]
 
 get_tool_stats <- function(df, filter_name) {
-  # Use narrow data directly
+  # Use narrow data directly, compute counts before pivoting
   stats <- df %>%
     group_by(Tool) %>%
     summarise(
@@ -34,7 +34,7 @@ get_tool_stats <- function(df, filter_name) {
   
   cat("Tool Stats for", filter_name, "\n")
   print(complete_stats)
-  write.csv(complete_stats, paste0("tool_stats_", filter_name, ".csv"), row.names = FALSE)
+  write.csv(complete_stats, paste0("csv/tool_stats_", filter_name, ".csv"), row.names = FALSE)
 }
 
 print_mean <- function(df, filter_name) {
@@ -43,5 +43,5 @@ print_mean <- function(df, filter_name) {
     summarise(across(where(is.numeric), mean, na.rm = TRUE), .groups = "drop")
   cat("Mean Values for", filter_name, "\n")
   print(means)
-  write.csv(means, paste0("mean_", filter_name, ".csv"), row.names = FALSE)
+  write.csv(means, paste0("csv/mean_", filter_name, ".csv"), row.names = FALSE)
 }
