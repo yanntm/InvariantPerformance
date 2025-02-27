@@ -313,26 +313,36 @@ sub parse_tina_file {
         open my $fh, '<', $file or die "Could not open file '$file': $!";
         my $first_line = <$fh>;
         
-        # Revert to original logic with word boundaries for all flags
+        # Diagnostic traces for flag detection
+        warn "Parsing first line for $file: '$first_line'";
+        my $has_f = $first_line =~ /\b-F\b/ ? 1 : 0;
+        my $has_s = $first_line =~ /\b-S\b/ ? 1 : 0;
+        my $has_p = $first_line =~ /\b-P\b/ ? 1 : 0;
+        my $has_t = $first_line =~ /\b-T\b/ ? 1 : 0;
+        warn "Detected flags: -F=$has_f, -S=$has_s, -P=$has_p, -T=$has_t";
+        
+        # Original logic with word boundaries
         my $is_t_mode = 0;  # Default to P-based
-        if ($first_line =~ /\b-F\b/ && $first_line =~ /\b-T\b/) {
+        if ($has_f && $has_t) {
             $examination = "TFLOWS";
             $is_t_mode = 1;
-        } elsif ($first_line =~ /\b-F\b/ && $first_line =~ /\b-P\b/) {
+        } elsif ($has_f && $has_p) {
             $examination = "PFLOWS";
-        } elsif ($first_line =~ /\b-S\b/ && $first_line =~ /\b-T\b/) {
+        } elsif ($has_s && $has_t) {
             $examination = "TSEMIFLOWS";
             $is_t_mode = 1;
-        } elsif ($first_line =~ /\b-S\b/ && $first_line =~ /\b-P\b/) {
+        } elsif ($has_s && $has_p) {
             $examination = "PSEMIFLOWS";
-        } elsif ($first_line =~ /\b-F\b/) {
+        } elsif ($has_f) {
             $examination = "FLOWS";
-        } elsif ($first_line =~ /\b-S\b/) {
+        } elsif ($has_s) {
             $examination = "SEMIFLOWS";
         } else {
             warn "Unknown examination mode for $file: '$first_line'";
+            warn "Flag states: -F=$has_f, -S=$has_s, -P=$has_p, -T=$has_t";
             $examination = "UNK";
         }
+        warn "Assigned examination: $examination";
         seek($fh, 0, 0);
 
         while (my $line = <$fh>) {
