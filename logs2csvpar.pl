@@ -300,8 +300,8 @@ sub parse_tina_file {
         $model =~ s/\.(struct|tina)$//;
         my $tool = ($file =~ /\.struct$/) ? "tina4ti2" : "tina";
         my $status = "UNK";
-        my $nbp   = -1;
-        my $nbt   = -1;
+        my $nbp   = -1;  # P invariants
+        my $nbt   = -1;  # T invariants
         my $tmem  = -1;
         my $timecmd = -1;
         my $cardp = -1;
@@ -310,54 +310,58 @@ sub parse_tina_file {
         my $examination = "UNK";
         my $of = 0;
 
-        open my $fh, '<', $file or die "Could not open file '$file': $!";
-        my $first_line = <$fh>;
+        open IN, "< $file";
+        my $first_line = <IN>;
+        # Determine mode and set P/T flag
+        my $is_t_mode = 0;  # Default to P-based
         if ($first_line =~ /\b-F\b/ and $first_line =~ /\b-T\b/) {
             $examination = "TFLOWS";
+            $is_t_mode = 1;
         } elsif ($first_line =~ /\b-F\b/ and $first_line =~ /\b-P\b/) {
             $examination = "PFLOWS";
         } elsif ($first_line =~ /\b-S\b/ and $first_line =~ /\b-T\b/) {
             $examination = "TSEMIFLOWS";
+            $is_t_mode = 1;
         } elsif ($first_line =~ /\b-S\b/ and $first_line =~ /\b-P\b/) {
             $examination = "PSEMIFLOWS";
         } elsif ($first_line =~ /\b-F\b/) {
-            $examination = "FLOWS";
+            $examination = "FLOWS";  # Legacy, treated as P-based
         } elsif ($first_line =~ /\b-S\b/) {
-            $examination = "SEMIFLOWS";
+            $examination = "SEMIFLOWS";  # Legacy, treated as P-based
         } else {
             $examination = "UNK";
         }
-        seek($fh, 0, 0);
+        seek(IN, 0, 0);
 
-        while (my $line = <$fh>) {
+        while (my $line = <IN>) {
             chomp $line;
             if ($line =~ /(\d+) places, (\d+) transitions, (\d+) arcs/) {
                 $cardp = $1;
                 $cardt = $2;
                 $carda = $3;
             } elsif ($line =~ /(\d+) flow\(s\)/) {
-                if ($nbp == -1) {
-                    $nbp = $1;
+                if ($is_t_mode) {
+                    $nbt = $1;  # T flows
                 } else {
-                    $nbt = $1;
+                    $nbp = $1;  # P flows
                 }
             } elsif ($line =~ /no flow\(s\)/) {
-                if ($nbp == -1) {
-                    $nbp = 0;
-                } else {
+                if ($is_t_mode) {
                     $nbt = 0;
+                } else {
+                    $nbp = 0;
                 }
             } elsif ($line =~ /(\d+) semiflow\(s\)/) {
-                if ($nbp == -1) {
-                    $nbp = $1;
+                if ($is_t_mode) {
+                    $nbt = $1;  # T semiflows
                 } else {
-                    $nbt = $1;
+                    $nbp = $1;  # P semiflows
                 }
             } elsif ($line =~ /no semiflow\(s\)/) {
-                if ($nbp == -1) {
-                    $nbp = 0;
-                } else {
+                if ($is_t_mode) {
                     $nbt = 0;
+                } else {
+                    $nbp = 0;
                 }
             } elsif ($line =~ /ANALYSIS COMPLETED/) {
                 $status = "OK";
@@ -383,7 +387,7 @@ sub parse_tina_file {
                 }
             }
         }
-        close $fh;
+        close IN;
 
         if ($of == 1) {
             $status = "OF";
@@ -396,6 +400,7 @@ sub parse_tina_file {
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
+
 sub parse_gspn_file {
     my ($file) = @_;
     if ($file =~ /\.gspn$/) {
