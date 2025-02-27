@@ -310,30 +310,36 @@ sub parse_tina_file {
         my $examination = "UNK";
         my $of = 0;
 
-        open IN, "< $file";
-        my $first_line = <IN>;
-        # Determine mode and set P/T flag
+        open my $fh, '<', $file or die "Could not open file '$file': $!";
+        my $first_line = <$fh>;
+        # Robust examination detection with word boundaries
+        my $has_f = $first_line =~ /\b-F\b/;
+        my $has_s = $first_line =~ /\b-S\b/;
+        my $has_p = $first_line =~ /\b-P\b/;
+        my $has_t = $first_line =~ /\b-T\b/;
+        
         my $is_t_mode = 0;  # Default to P-based
-        if ($first_line =~ /\b-F\b/ and $first_line =~ /\b-T\b/) {
+        if ($has_f && $has_t && !$has_p && !$has_s) {
             $examination = "TFLOWS";
             $is_t_mode = 1;
-        } elsif ($first_line =~ /\b-F\b/ and $first_line =~ /\b-P\b/) {
+        } elsif ($has_f && $has_p && !$has_t && !$has_s) {
             $examination = "PFLOWS";
-        } elsif ($first_line =~ /\b-S\b/ and $first_line =~ /\b-T\b/) {
+        } elsif ($has_s && $has_t && !$has_f && !$has_p) {
             $examination = "TSEMIFLOWS";
             $is_t_mode = 1;
-        } elsif ($first_line =~ /\b-S\b/ and $first_line =~ /\b-P\b/) {
+        } elsif ($has_s && $has_p && !$has_f && !$has_t) {
             $examination = "PSEMIFLOWS";
-        } elsif ($first_line =~ /\b-F\b/) {
-            $examination = "FLOWS";  # Legacy, treated as P-based
-        } elsif ($first_line =~ /\b-S\b/) {
-            $examination = "SEMIFLOWS";  # Legacy, treated as P-based
+        } elsif ($has_f && !$has_t && !$has_p && !$has_s) {
+            $examination = "FLOWS";
+        } elsif ($has_s && !$has_t && !$has_p && !$has_f) {
+            $examination = "SEMIFLOWS";
         } else {
+            warn "Unknown examination mode for $file: '$first_line'";
             $examination = "UNK";
         }
-        seek(IN, 0, 0);
+        seek($fh, 0, 0);
 
-        while (my $line = <IN>) {
+        while (my $line = <$fh>) {
             chomp $line;
             if ($line =~ /(\d+) places, (\d+) transitions, (\d+) arcs/) {
                 $cardp = $1;
@@ -387,7 +393,7 @@ sub parse_tina_file {
                 }
             }
         }
-        close IN;
+        close $fh;
 
         if ($of == 1) {
             $status = "OF";
@@ -400,7 +406,6 @@ sub parse_tina_file {
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
-
 sub parse_gspn_file {
     my ($file) = @_;
     if ($file =~ /\.gspn$/) {
