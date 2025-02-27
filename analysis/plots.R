@@ -96,11 +96,17 @@ plot_numerics <- function(df, filter_name) {
   exclude_cols <- c("CardP", "CardT", "CardA")  # Skip model description columns
   for (col in setdiff(numeric_cols(df), exclude_cols)) {
     if (all(is.na(df[[col]]))) next  # Skip if all NA due to filter
+    # Compute non-NA counts directly from thin data
     non_na_counts <- df %>%
       group_by(Tool) %>%
       summarise(Count = sum(!is.na(.data[[col]])), .groups = "drop")
+    
+    # Append counts to Tool labels in the original data
     df_plot <- df[!is.na(df[[col]]), ]
-    df_plot$Tool <- paste(df_plot$Tool, " (", non_na_counts$Count[match(df_plot$Tool, non_na_counts$Tool)], ")", sep = "")
+    df_plot <- df_plot %>%
+      left_join(non_na_counts, by = "Tool") %>%
+      mutate(Tool = paste(Tool, " (", Count, ")", sep = ""))
+    
     p <- ggplot(df_plot, aes(x = Tool, y = .data[[col]])) +
       geom_boxplot() +
       scale_y_continuous(trans = "log10") +
