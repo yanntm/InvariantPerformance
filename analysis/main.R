@@ -4,6 +4,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(gridExtra)
+library(grid)
 
 options(width = 1000)  # Improve console output width
 
@@ -30,6 +31,9 @@ if (tools_arg != "") {
 
 # Check data quality
 check_data_quality(data)
+
+# Plot model descriptions
+plot_model_descriptions(data)
 
 # Define filters
 filters <- list(
@@ -72,15 +76,13 @@ for (exam in unique(data$Examination)) {
     next
   }
   
-  get_tool_stats(exam_data, exam)  # Use narrow exam_data
+  get_tool_stats(exam_data, exam)
   
   combinations <- combn(tools, 2, simplify = FALSE)
   for (combo in combinations) {
     tool1 <- combo[1]
     tool2 <- combo[2]
-    for (metric in c("Time", "Mem")) {
-      plot_comparisons(exam_data, tool1, tool2, metric, exam)  # Use narrow exam_data
-    }
+    plot_comparisons(wide_data, tool1, tool2, exam)
   }
 }
 dev.off()
@@ -92,6 +94,7 @@ for (filter_name in names(filters)) {
   plot_numerics(filtered_data, filter_name)
   for (metric in metrics) {
     better <- if (metric == "Time") "lower" else "higher"  # Adjust as needed
-    who_beats_who(filtered_data, metric, better, filter_name)
+    who_beats_who(filtered_data, metric, better, filter_name, na_loses = FALSE)  # Flag for NA handling
   }
 }
+
