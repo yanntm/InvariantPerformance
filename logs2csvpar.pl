@@ -314,12 +314,12 @@ sub parse_tina_file {
         my $first_line = <$fh>;
         
         # Diagnostic traces for flag detection
-        warn "Parsing first line for $file: '$first_line'";
+        # warn "Parsing first line for $file: '$first_line'";
         my $has_f = $first_line =~ /\s+-F\s/ ? 1 : 0;
         my $has_s = $first_line =~ /\s+-S\s/ ? 1 : 0;
         my $has_p = $first_line =~ /\s+-P\s/ ? 1 : 0;
         my $has_t = $first_line =~ /\s+-T\s/ ? 1 : 0;
-        warn "Detected flags: -F=$has_f, -S=$has_s, -P=$has_p, -T=$has_t";
+        # warn "Detected flags: -F=$has_f, -S=$has_s, -P=$has_p, -T=$has_t";
         
         # Original logic with strict whitespace
         my $is_t_mode = 0;  # Default to P-based
@@ -342,7 +342,7 @@ sub parse_tina_file {
             warn "Flag states: -F=$has_f, -S=$has_s, -P=$has_p, -T=$has_t";
             $examination = "UNK";
         }
-        warn "Assigned examination: $examination";
+        # warn "Assigned examination: $examination";
         seek($fh, 0, 0);
 
         while (my $line = <$fh>) {
