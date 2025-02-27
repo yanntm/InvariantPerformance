@@ -312,17 +312,17 @@ sub parse_tina_file {
 
         open my $fh, '<', $file or die "Could not open file '$file': $!";
         my $first_line = <$fh>;
-        if ($first_line =~ /-F/ and $first_line =~ /-T/) {
+        if ($first_line =~ /\b-F\b/ and $first_line =~ /\b-T\b/) {
             $examination = "TFLOWS";
-        } elsif ($first_line =~ /-F/ and $first_line =~ /-P/) {
+        } elsif ($first_line =~ /\b-F\b/ and $first_line =~ /\b-P\b/) {
             $examination = "PFLOWS";
-        } elsif ($first_line =~ /-S/ and $first_line =~ /-T/) {
+        } elsif ($first_line =~ /\b-S\b/ and $first_line =~ /\b-T\b/) {
             $examination = "TSEMIFLOWS";
-        } elsif ($first_line =~ /-S/ and $first_line =~ /-P/) {
+        } elsif ($first_line =~ /\b-S\b/ and $first_line =~ /\b-P\b/) {
             $examination = "PSEMIFLOWS";
-        } elsif ($first_line =~ /-F\b/) {
+        } elsif ($first_line =~ /\b-F\b/) {
             $examination = "FLOWS";
-        } elsif ($first_line =~ /-S\b/) {
+        } elsif ($first_line =~ /\b-S\b/) {
             $examination = "SEMIFLOWS";
         } else {
             $examination = "UNK";
@@ -396,7 +396,6 @@ sub parse_tina_file {
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
-
 sub parse_gspn_file {
     my ($file) = @_;
     if ($file =~ /\.gspn$/) {
