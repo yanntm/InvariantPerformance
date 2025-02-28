@@ -322,13 +322,15 @@ run_petrispot() {
   local extra_suffix="$6"  # Extra flags suffix (e.g., ".nSSRlL500")
 
   if contains_tool "$tool_name"; then
-    logfile="$LOGS/$model${extra_suffix}${log_suffix}"
-    if [ ! -f "$logfile" ]; then
-      cmd="$LIMITS \"$petri_cmd\" -i \"$model_dir/model.pnml\" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS > \"$logfile\" 2>&1"
+    local final_logfile="$LOGS/$model${extra_suffix}${log_suffix}"
+    local temp_logfile="/tmp/$model${extra_suffix}${log_suffix}"
+    if [ ! -f "$final_logfile" ]; then
+      cmd="$LIMITS \"$petri_cmd\" -i \"$model_dir/model.pnml\" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS > \"$temp_logfile\" 2>&1"
       echo "Running $tool_name: $cmd"
       eval "$cmd"
+      mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
       if [ "$SOLUTION" = true ]; then
-        python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$logfile" \
+        python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$final_logfile" \
           --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model${extra_suffix}${log_suffix}"
       fi
     fi
@@ -349,15 +351,17 @@ for model_dir in "$MODELDIR"/*/; do
     
     # --- Tina (without 4ti2 integration) ---
     if contains_tool tina; then
-        logfile="$LOGS/$model.tina"
-        if [ ! -f "$logfile" ]; then
+        local final_logfile="$LOGS/$model.tina"
+        local temp_logfile="/tmp/$model.tina"
+        if [ ! -f "$final_logfile" ]; then
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
-            cmd="$LIMITS \"$tina_cmd\" @MLton fixed-heap 15G -- $TINA_FLAG -mp \"$model_dir/model.pnml\" > \"$logfile\" 2>&1"
+            cmd="$LIMITS \"$tina_cmd\" @MLton fixed-heap 15G -- $TINA_FLAG -mp \"$model_dir/model.pnml\" > \"$temp_logfile\" 2>&1"
             echo "Running tina: $cmd"
             eval "$cmd"
+            mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$final_logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.tina"
             fi
         fi
@@ -365,17 +369,19 @@ for model_dir in "$MODELDIR"/*/; do
 
     # --- Tina with 4ti2 integration ---
     if contains_tool tina4ti2; then
-        logfile="$LOGS/$model.struct"
-        if [ ! -f "$logfile" ]; then
+        local final_logfile="$LOGS/$model.struct"
+        local temp_logfile="/tmp/$model.struct"
+        if [ ! -f "$final_logfile" ]; then
             export PATH=$ROOT/bin:$PATH
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
-            cmd="$LIMITS \"$tina_cmd\" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I \"$model_dir/model.pnml\" > \"$logfile\" 2>&1"
+            cmd="$LIMITS \"$tina_cmd\" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I \"$model_dir/model.pnml\" > \"$temp_logfile\" 2>&1"
             echo "Running tina4ti2: $cmd"
             eval "$cmd"
-            sync
+            mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
+            sync  # Optional: Ensure NFS sync after move
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=tina --log="$final_logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.struct"
             fi
         fi
@@ -383,13 +389,15 @@ for model_dir in "$MODELDIR"/*/; do
 
     # --- ITS-Tools ---
     if contains_tool itstools; then
-        logfile="$LOGS/$model.its"
-        if [ ! -f "$logfile" ]; then
-            cmd="$LIMITS \"$ITSTOOLS\" -pnfolder \"$model_dir\" $ITS_FLAG > \"$logfile\" 2>&1"
+        local final_logfile="$LOGS/$model.its"
+        local temp_logfile="/tmp/$model.its"
+        if [ ! -f "$final_logfile" ]; then
+            cmd="$LIMITS \"$ITSTOOLS\" -pnfolder \"$model_dir\" $ITS_FLAG > \"$temp_logfile\" 2>&1"
             echo "Running itstools: $cmd"
             eval "$cmd"
+            mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/InvCompare/collectSolution.py" --tool=itstools --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=itstools --log="$final_logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.its"
             fi
         fi
@@ -408,13 +416,15 @@ for model_dir in "$MODELDIR"/*/; do
 
     # --- GreatSPN ---
     if contains_tool gspn; then
-        logfile="$LOGS/$model.gspn"
-        if [ ! -f "$logfile" ]; then
-            cmd="$LIMITS \"$DSPN\" -load model $GSPN_FLAG > \"$logfile\" 2>&1"
+        local final_logfile="$LOGS/$model.gspn"
+        local temp_logfile="/tmp/$model.gspn"
+        if [ ! -f "$final_logfile" ]; then
+            cmd="$LIMITS \"$DSPN\" -load model $GSPN_FLAG > \"$temp_logfile\" 2>&1"
             echo "Running gspn: $cmd"
             eval "$cmd"
+            mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
             if [ "$SOLUTION" = true ]; then
-                python3 "$ROOT/InvCompare/collectSolution.py" --tool=greatspn --log="$logfile" \
+                python3 "$ROOT/InvCompare/collectSolution.py" --tool=greatspn --log="$final_logfile" \
                     --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.gspn"
             fi
         fi
