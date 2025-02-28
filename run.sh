@@ -322,8 +322,8 @@ run_petrispot() {
   local extra_suffix="$6"  # Extra flags suffix (e.g., ".nSSRlL500")
 
   if contains_tool "$tool_name"; then
-    local final_logfile="$LOGS/$model${extra_suffix}${log_suffix}"
-    local temp_logfile="/tmp/$model${extra_suffix}${log_suffix}"
+    final_logfile="$LOGS/$model${extra_suffix}${log_suffix}"
+    temp_logfile="/tmp/$model${extra_suffix}${log_suffix}"
     if [ ! -f "$final_logfile" ]; then
       cmd="$LIMITS \"$petri_cmd\" -i \"$model_dir/model.pnml\" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS > \"$temp_logfile\" 2>&1"
       echo "Running $tool_name: $cmd"
@@ -351,8 +351,8 @@ for model_dir in "$MODELDIR"/*/; do
     
     # --- Tina (without 4ti2 integration) ---
     if contains_tool tina; then
-        local final_logfile="$LOGS/$model.tina"
-        local temp_logfile="/tmp/$model.tina"
+        final_logfile="$LOGS/$model.tina"
+        temp_logfile="/tmp/$model.tina"
         if [ ! -f "$final_logfile" ]; then
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
@@ -369,8 +369,8 @@ for model_dir in "$MODELDIR"/*/; do
 
     # --- Tina with 4ti2 integration ---
     if contains_tool tina4ti2; then
-        local final_logfile="$LOGS/$model.struct"
-        local temp_logfile="/tmp/$model.struct"
+        final_logfile="$LOGS/$model.struct"
+        temp_logfile="/tmp/$model.struct"
         if [ ! -f "$final_logfile" ]; then
             export PATH=$ROOT/bin:$PATH
             tina_cmd="$STRUCT"
@@ -389,8 +389,8 @@ for model_dir in "$MODELDIR"/*/; do
 
     # --- ITS-Tools ---
     if contains_tool itstools; then
-        local final_logfile="$LOGS/$model.its"
-        local temp_logfile="/tmp/$model.its"
+        final_logfile="$LOGS/$model.its"
+        temp_logfile="/tmp/$model.its"
         if [ ! -f "$final_logfile" ]; then
             cmd="$LIMITS \"$ITSTOOLS\" -pnfolder \"$model_dir\" $ITS_FLAG > \"$temp_logfile\" 2>&1"
             echo "Running itstools: $cmd"
@@ -416,8 +416,8 @@ for model_dir in "$MODELDIR"/*/; do
 
     # --- GreatSPN ---
     if contains_tool gspn; then
-        local final_logfile="$LOGS/$model.gspn"
-        local temp_logfile="/tmp/$model.gspn"
+        final_logfile="$LOGS/$model.gspn"
+        temp_logfile="/tmp/$model.gspn"
         if [ ! -f "$final_logfile" ]; then
             cmd="$LIMITS \"$DSPN\" -load model $GSPN_FLAG > \"$temp_logfile\" 2>&1"
             echo "Running gspn: $cmd"
