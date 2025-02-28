@@ -17,7 +17,7 @@ source("utils.R")
 
 # Command-line args
 args <- commandArgs(trailingOnly = TRUE)
-csv_file <- if (length(args) > 0) args[1] else "invar.csv"
+csv_file <- if (length(args) > 0) args[1] else "../invar.csv"
 tools_arg <- if (length(args) > 1) args[2] else ""
 
 # Load and clean data
