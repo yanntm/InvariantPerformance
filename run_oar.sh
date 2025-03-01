@@ -29,8 +29,9 @@
 WORKDIR="/home/ythierry/git/InvariantPerformance"
 
 # New modes to run
-MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
+#MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
 #MODES=(PSEMIFLOWS)
+MODES=(PSEMIFLOWS TSEMIFLOWS)
 
 # Allowed tool identifiers
 #TOOLS=(tina tina4ti2 itstools petri32 petri64 petri128 gspn)
@@ -49,8 +50,10 @@ OAR_CONSTRAINTS='{(host like "tall%")}/nodes=1/core=4,walltime=12:00:00'
 # PetriSpot configuration matrix (array of arrays)
 declare -A PETRI_MATRIX
 PETRI_MATRIX[0]="--noSingleSignRow ''"                        # 2 options: on or off
-PETRI_MATRIX[1]="--loopLimit=1 --loopLimit=500 --loopLimit=-1"  # 3 options
+#PETRI_MATRIX[1]="--loopLimit=1 --loopLimit=500 --loopLimit=-1"  # 3 options
+PETRI_MATRIX[1]="--loopLimit=500"  # 3 options
 PETRI_MATRIX[2]="--noTrivialCull ''"                          # 2 options
+PETRI_MATRIX[3]="--minBasis ''"                          # 2 options
 
 # --- Utility: Check if a tool is a PetriSpot variant ---
 is_petrispot() {
