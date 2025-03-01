@@ -3,7 +3,8 @@
 use strict;
 use warnings;
 use POSIX qw(:sys_wait_h);  # For WNOHANG in waitpid
-use Getopt::Long;          # For command-line options
+use Getopt::Long;           # For command-line options
+use List::Util qw(shuffle); # For shuffling files
 
 my $default_processes = 4;
 my $num_processes = $default_processes;
@@ -412,6 +413,7 @@ sub parse_tina_file {
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
+
 sub parse_gspn_file {
     my ($file) = @_;
     if ($file =~ /\.gspn$/) {
@@ -519,8 +521,8 @@ $| = 1;
 # Write CSV header to stdout
 print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,SolSizeKB,SolSize,SolPosSize,SolMaxCoeff,SolSumCoeff,SolNbCoeff,Time,Mem,Status\n";
 
-# Collect all files once
-my @all_files = (<*petri*>, <*its>, <*struct>, <*tina>, <*gspn>);
+# Collect all files once and shuffle
+my @all_files = shuffle(<*petri*>, <*its>, <*struct>, <*tina>, <*gspn>);
 my $total_files = scalar @all_files;
 my $chunk_size = int(($total_files + $num_processes - 1) / $num_processes);  # Ceiling division
 
