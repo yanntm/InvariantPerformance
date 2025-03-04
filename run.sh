@@ -323,8 +323,8 @@ run_petrispot() {
 
   if contains_tool "$tool_name"; then
     final_logfile="$LOGS/$model${extra_suffix}${log_suffix}"
-    temp_logfile="/tmp/$model${extra_suffix}${log_suffix}"
-    temp_timelog="/tmp/$model${extra_suffix}${log_suffix}.timelog"
+    temp_logfile="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR"
+    temp_timelog="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR.timelog"
     [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
     if [ ! -f "$final_logfile" ]; then
       cmd="$LIMITS \"$petri_cmd\" -i \"$model_dir/model.pnml\" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS > \"$temp_logfile\" 2> \"$temp_timelog\""
@@ -356,8 +356,8 @@ for model_dir in "$MODELDIR"/*/; do
     # --- Tina (without 4ti2 integration) ---
     if contains_tool tina; then
         final_logfile="$LOGS/$model.tina"
-        temp_logfile="/tmp/$model.tina"
-        temp_timelog="/tmp/$model.tina.timelog"
+        temp_logfile="/tmp/$model$LOGDIR.tina"
+        temp_timelog="/tmp/$model$LOGDIR.tina.timelog"
         [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
         if [ ! -f "$final_logfile" ]; then
             tina_cmd="$STRUCT"
@@ -378,8 +378,8 @@ for model_dir in "$MODELDIR"/*/; do
     # --- Tina with 4ti2 integration ---
     if contains_tool tina4ti2; then
         final_logfile="$LOGS/$model.struct"
-        temp_logfile="/tmp/$model.struct"
-        temp_timelog="/tmp/$model.struct.timelog"
+        temp_logfile="/tmp/$model$LOGDIR.struct"
+        temp_timelog="/tmp/$model$LOGDIR.struct.timelog"
         [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
         if [ ! -f "$final_logfile" ]; then
             export PATH=$ROOT/bin:$PATH
@@ -402,8 +402,8 @@ for model_dir in "$MODELDIR"/*/; do
     # --- ITS-Tools ---
     if contains_tool itstools; then
         final_logfile="$LOGS/$model.its"
-        temp_logfile="/tmp/$model.its"
-        temp_timelog="/tmp/$model.its.timelog"
+        temp_logfile="/tmp/$model$LOGDIR.its"
+        temp_timelog="/tmp/$model$LOGDIR.its.timelog"
         [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
         if [ ! -f "$final_logfile" ]; then
             cmd="$LIMITS \"$ITSTOOLS\" -pnfolder \"$model_dir\" $ITS_FLAG > \"$temp_logfile\" 2> \"$temp_timelog\""
@@ -433,8 +433,8 @@ for model_dir in "$MODELDIR"/*/; do
     # --- GreatSPN ---
     if contains_tool gspn; then
         final_logfile="$LOGS/$model.gspn"
-        temp_logfile="/tmp/$model.gspn"
-        temp_timelog="/tmp/$model.gspn.timelog"
+        temp_logfile="/tmp/$model$LOGDIR.gspn"
+        temp_timelog="/tmp/$model$LOGDIR.gspn.timelog"
         [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
         if [ ! -f "$final_logfile" ]; then
             cmd="$LIMITS \"$DSPN\" -load model $GSPN_FLAG > \"$temp_logfile\" 2> \"$temp_timelog\""
