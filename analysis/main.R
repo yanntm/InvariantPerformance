@@ -54,6 +54,40 @@ filters <- list(
 # Metrics to analyze (SolXX only)
 metrics <- c("SolSizeKB", "SolSize", "SolPosSize", "SolMaxCoeff", "SolSumCoeff", "SolNbCoeff")
 
+# Helper function: returns TRUE if two PetriSpot64 tool names differ by exactly one flag.
+differ_by_one_flag <- function(tool1, tool2) {
+  tokens1 <- unlist(strsplit(tool1, "_"))
+  tokens2 <- unlist(strsplit(tool2, "_"))
+  
+  # Only apply flag-difference check if the base (first token) is identical.
+  if (tokens1[1] != tokens2[1]) return(FALSE)
+  
+  flags1 <- tokens1[-1]
+  flags2 <- tokens2[-1]
+  
+  # If lengths differ by more than 1, then they differ by more than one flag.
+  if (abs(length(flags1) - length(flags2)) > 1) return(FALSE)
+  
+  if (length(flags1) == length(flags2)) {
+    diff_count <- sum(flags1 != flags2)
+    return(diff_count == 1)
+  } else {
+    # One tool has one extra flag; check if removing one flag from the longer list makes them equal.
+    if (length(flags1) > length(flags2)) {
+      longer <- flags1; shorter <- flags2
+    } else {
+      longer <- flags2; shorter <- flags1
+    }
+    for (i in seq_along(longer)) {
+      candidate <- longer[-i]
+      if (all(candidate == shorter)) {
+        return(TRUE)
+      }
+    }
+    return(FALSE)
+  }
+}
+
 # Process each Examination (existing analysis)
 for (exam in unique(data$Examination)) {
   exam_data <- data %>% filter(Examination == exam)
@@ -85,6 +119,10 @@ for (exam in unique(data$Examination)) {
   for (combo in combinations) {
     tool1 <- combo[1]
     tool2 <- combo[2]
+    # For PetriSpot64 variants, only compare if they differ by exactly one flag.
+    if (grepl("^PetriSpot64", tool1) && grepl("^PetriSpot64", tool2)) {
+      if (!differ_by_one_flag(tool1, tool2)) next
+    }
     plot_comparisons(wide_data, tool1, tool2, exam)
   }
 }
