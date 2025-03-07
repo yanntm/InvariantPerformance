@@ -71,7 +71,9 @@ for model in "${MODELS[@]}"; do
     echo "Started: $(date)" >> "$REPORT_FILE"
 
     # Create a unique temp directory in /tmp for this model
-    TEMP_DIR=$(mktemp -d "/tmp/compare_${model}.XXXXXX")
+    # Sanitize model name for temp dir (replace slashes or invalid chars if any)
+    SAFE_MODEL=$(echo "$model" | tr -C '[:alnum:]-' '_')
+    TEMP_DIR=$(mktemp -d "/tmp/compare_${SAFE_MODEL}.XXXXXX")
     if [ $? -ne 0 ]; then
         echo "Error: Failed to create temp directory for $model" >&2
         echo "Failed to create temp directory" >> "$REPORT_FILE"
