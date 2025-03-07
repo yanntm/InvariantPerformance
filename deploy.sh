@@ -1,6 +1,6 @@
 #!/bin/bash
-# deploy.sh: Install tools and models, perform model conversion,
-# and write config.sh that simply echoes the current environment variables.
+# deploy.sh: Install tools, models, Z3, set up virtualenv, perform model conversion,
+# and write config.sh with environment variables.
 
 set -e
 
@@ -83,6 +83,30 @@ fi
 chmod a+x timeout.pl
 export TIMEOUT="$PWD/timeout.pl"
 
+# --- Install Z3 ---
+mkdir -p z3
+pushd z3 > /dev/null
+if [ ! -f "bin/libz3.so" ]; then
+    wget https://github.com/Z3Prover/z3/releases/download/z3-4.14.0/z3-4.14.0-x64-glibc-2.35.zip
+    unzip z3-4.14.0-x64-glibc-2.35.zip
+    mv z3-4.14.0-x64-glibc-2.35/* .
+    rmdir z3-4.14.0-x64-glibc-2.35
+    rm z3-4.14.0-x64-glibc-2.35.zip
+fi
+export Z3_DIR="$PWD"
+export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
+popd > /dev/null
+
+# --- Setup Virtual Environment ---
+VENV_DIR="$ROOT/venv"
+if [ ! -d "$VENV_DIR" ]; then
+    python3 -m venv "$VENV_DIR"
+    source "$VENV_DIR/bin/activate"
+    PYTHON_VERSION=$(python3 -c "import sys; print(f'python{sys.version_info.major}.{sys.version_info.minor}')")
+    cp -r "$Z3_DIR/bin/python/z3" "$VENV_DIR/lib/$PYTHON_VERSION/site-packages/"
+    deactivate
+fi
+export VIRTUAL_ENV="$VENV_DIR"
 
 # Step 2: Download models and prepare them
 # --- Install Models and Convert ---
@@ -135,6 +159,9 @@ export PETRISPOT64="$PETRISPOT64"
 export PETRISPOT128="$PETRISPOT128"
 export ITSTOOLS="$ITSTOOLS"
 export TIMEOUT="$TIMEOUT"
+export Z3_DIR="$Z3_DIR"
+export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
+export VIRTUAL_ENV="$VENV_DIR"
 EOF
 
 chmod +x config.sh
