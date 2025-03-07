@@ -27,7 +27,7 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
     exit 1
 fi
 
-# Filter for .sol.gz files and extract unique model names
+# Filter for .sol.gz files and store full paths
 MODEL_FILES=()
 for file in "$@"; do
     if [[ "$file" == *.sol.gz && -f "$file" ]]; then
@@ -40,7 +40,8 @@ if [ ${#MODEL_FILES[@]} -eq 0 ]; then
     exit 1
 fi
 
-mapfile -t MODELS < <(printf '%s\n' "${MODEL_FILES[@]}" | sed 's/\.sol\.gz$//' | cut -d '.' -f 1 | sort -u)
+# Extract unique model names using basename
+mapfile -t MODELS < <(printf '%s\n' "${MODEL_FILES[@]}" | xargs -n 1 basename | sed 's/\.sol\.gz$//' | cut -d '.' -f 1 | sort -u)
 
 # Process each model
 for model in "${MODELS[@]}"; do
@@ -49,7 +50,7 @@ for model in "${MODELS[@]}"; do
         continue
     fi
 
-    # Find all .sol.gz files for this model from input
+    # Find all .sol.gz files for this model from input (full paths)
     mapfile -t MODEL_FILES < <(printf '%s\n' "${MODEL_FILES[@]}" | grep -F "$model")
 
     if [ ${#MODEL_FILES[@]} -lt 2 ]; then
@@ -71,7 +72,6 @@ for model in "${MODELS[@]}"; do
     echo "Started: $(date)" >> "$REPORT_FILE"
 
     # Create a unique temp directory in /tmp for this model
-    # Sanitize model name for temp dir (replace slashes or invalid chars if any)
     SAFE_MODEL=$(echo "$model" | tr -C '[:alnum:]-' '_')
     TEMP_DIR=$(mktemp -d "/tmp/compare_${SAFE_MODEL}.XXXXXX")
     if [ $? -ne 0 ]; then
