@@ -97,16 +97,15 @@ export Z3_DIR="$PWD"
 export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
 popd > /dev/null
 
-# --- Setup Virtual Environment ---
-VENV_DIR="$ROOT/venv"
-if [ ! -d "$VENV_DIR" ]; then
-    python3 -m venv "$VENV_DIR"
-    source "$VENV_DIR/bin/activate"
-    PYTHON_VERSION=$(python3 -c "import sys; print(f'python{sys.version_info.major}.{sys.version_info.minor}')")
-    cp -r "$Z3_DIR/bin/python/z3" "$VENV_DIR/lib/$PYTHON_VERSION/site-packages/"
-    deactivate
+# --- Setup Python Environment with Z3 Bindings ---
+LIB_DIR="$ROOT/lib"
+mkdir -p "$LIB_DIR"
+if [ ! -d "$LIB_DIR/z3" ]; then
+    # Get Python version (e.g., "Python 3.11.2" -> "python3.11")
+    PYTHON_VERSION=$(python3 --version | cut -d ' ' -f 2 | cut -d '.' -f 1,2)
+    cp -r "$Z3_DIR/bin/python/z3" "$LIB_DIR/"
 fi
-export VIRTUAL_ENV="$VENV_DIR"
+export PYTHONPATH="$LIB_DIR:$PYTHONPATH"
 
 # Step 2: Download models and prepare them
 # --- Install Models and Convert ---
@@ -161,7 +160,7 @@ export ITSTOOLS="$ITSTOOLS"
 export TIMEOUT="$TIMEOUT"
 export Z3_DIR="$Z3_DIR"
 export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
-export VIRTUAL_ENV="$VENV_DIR"
+export PYTHONPATH="$LIB_DIR:$PYTHONPATH"
 EOF
 
 chmod +x config.sh
