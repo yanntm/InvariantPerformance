@@ -28,20 +28,20 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
 fi
 
 # Filter for .sol.gz files and store full paths
-MODEL_FILES=()
+ALL_FILES=()
 for file in "$@"; do
     if [[ "$file" == *.sol.gz && -f "$file" ]]; then
-        MODEL_FILES+=("$file")
+        ALL_FILES+=("$file")
     fi
 done
 
-if [ ${#MODEL_FILES[@]} -eq 0 ]; then
+if [ ${#ALL_FILES[@]} -eq 0 ]; then
     echo "Error: No valid .sol.gz files provided" >&2
     exit 1
 fi
 
 # Extract unique model names using basename
-mapfile -t MODELS < <(printf '%s\n' "${MODEL_FILES[@]}" | xargs -n 1 basename | sed 's/\.sol\.gz$//' | cut -d '.' -f 1 | sort -u)
+mapfile -t MODELS < <(printf '%s\n' "${ALL_FILES[@]}" | xargs -n 1 basename | sed 's/\.sol\.gz$//' | cut -d '.' -f 1 | sort -u)
 
 # Process each model
 for model in "${MODELS[@]}"; do
@@ -50,7 +50,8 @@ for model in "${MODELS[@]}"; do
         continue
     fi
 
-    # Find all .sol.gz files for this model from input (full paths)
+    # Reset MODEL_FILES to all files, then filter for this model
+    MODEL_FILES=("${ALL_FILES[@]}")
     mapfile -t MODEL_FILES < <(printf '%s\n' "${MODEL_FILES[@]}" | grep -F "$model")
 
     if [ ${#MODEL_FILES[@]} -lt 2 ]; then
@@ -66,7 +67,7 @@ for model in "${MODELS[@]}"; do
         continue
     fi
 
-    # Trace start of model processing
+    # Trace start of model processing to stdout
     echo "Starting comparison for model: $model"
 
     # Create report file early
@@ -83,21 +84,25 @@ for model in "${MODELS[@]}"; do
         continue
     fi
 
-    # Unzip files to temp directory
+    # Unzip files to temp directory and filter out files with '?'
     TEMP_FILES=()
     for gz_file in "${MODEL_FILES[@]}"; do
         TEMP_FILE="$TEMP_DIR/$(basename "${gz_file%.sol.gz}.sol")"
         if ! gunzip -c "$gz_file" > "$TEMP_FILE"; then
             echo "Warning: Failed to unzip $gz_file" >&2
             echo "Warning: Failed to unzip $gz_file" >> "$REPORT_FILE"
+        elif grep -q '?' "$TEMP_FILE"; then
+            echo "Skipping $gz_file: Contains '?' indicating missing constants" >&2
+            echo "Skipping $gz_file: Contains '?' indicating missing constants" >> "$REPORT_FILE"
+            rm -f "$TEMP_FILE"
         else
             TEMP_FILES+=("$TEMP_FILE")
         fi
     done
 
     if [ ${#TEMP_FILES[@]} -lt 2 ]; then
-        echo "Warning: Fewer than 2 files unzipped successfully for $model" >&2
-        echo "Warning: Fewer than 2 files unzipped successfully" >> "$REPORT_FILE"
+        echo "Warning: Fewer than 2 valid files unzipped successfully for $model" >&2
+        echo "Warning: Fewer than 2 valid files unzipped successfully" >> "$REPORT_FILE"
     else
         # Run comparison with timeout
         "$TIMEOUT" "$TIMEOUT_SEC" python3 "$PYTHON_SCRIPT" --keepDup --compareSolutions "${TEMP_FILES[@]}" >> "$REPORT_FILE" 2>&1
