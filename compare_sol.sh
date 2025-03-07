@@ -66,6 +66,9 @@ for model in "${MODELS[@]}"; do
         continue
     fi
 
+    # Trace start of model processing
+    echo "Starting comparison for model: $model"
+
     # Create report file early
     echo "Comparison Report for model: $model" > "$REPORT_FILE"
     echo "Files: ${MODEL_FILES[*]}" >> "$REPORT_FILE"
