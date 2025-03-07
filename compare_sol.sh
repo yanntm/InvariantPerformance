@@ -27,12 +27,6 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
     exit 1
 fi
 
-# Activate virtualenv
-source "$VIRTUAL_ENV/bin/activate" || {
-    echo "Error: Failed to activate virtualenv at $VIRTUAL_ENV" >&2
-    exit 1
-}
-
 # Filter for .sol.gz files and extract unique model names
 MODEL_FILES=()
 for file in "$@"; do
