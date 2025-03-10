@@ -23,9 +23,10 @@ FOLDERS=(
 # Submit one job per folder
 for folder in "${FOLDERS[@]}"; do
     # Get unique model names and pipe to xargs for parallel processing
-    JOB_CMD="cd $BASE_DIR/$folder ; ls *.sol.gz 2>/dev/null | cut -d '.' -f 1 | sort -u | xargs -n 1 -P 64 bash -c 'files=($BASE_DIR/$folder/\$0*.sol.gz); $TEST_SCRIPT \"\${files[@]}\"' ; exit"
+    JOB_CMD="cd $BASE_DIR/$folder ; ls *.sol.gz 2>/dev/null | cut -d '.' -f 1 | sort -u | xargs -n 1 -P 64 bash -c 'cd $BASE_DIR && files=($BASE_DIR/$folder/\$0*.sol.gz); $TEST_SCRIPT \"\${files[@]}\"' ; exit"
     oarsub -l "{(host like \"tall%\")}/nodes=1/core=64,walltime=12:00:00" "$JOB_CMD"
     echo "Submitted job for $folder"
 done
 
 echo "All jobs submitted. Check OAR status with 'oarstat'."
+
