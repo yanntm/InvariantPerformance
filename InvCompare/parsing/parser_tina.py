@@ -73,7 +73,17 @@ def parseLogTina(logPath: str, isPlaceFlow: bool = True) -> List[Invariant]:
 
     return invariants
 
-# Replace the _parseFlowLines function and add _parseLineTina before it in parsing/parser_tina.py
+def normalize_name(text: str) -> str:
+    # Remove wrapping braces if present.
+    if text.startswith("{") and text.endswith("}"):
+        text = text[1:-1]
+    # Replace "evil" characters.
+    text = text.replace(" ", "_")
+    text = text.replace("-", "_")
+    text = text.replace("/", "_")
+    text = text.replace("*", "x")
+    text = text.replace("=", "_")
+    return text
 
 def _parseLineTina(line: str, isPlaceFlow: bool) -> Invariant:
     """
@@ -109,11 +119,14 @@ def _parseLineTina(line: str, isPlaceFlow: bool) -> Invariant:
         if not m:
             continue
         var_name = m.group(1).strip()
+        # Normalize variable names by cleaning out unwanted characters.
+        var_name = normalize_name(var_name)
         coeff_str = m.group(2)
         coeff = 1 if coeff_str is None else int(coeff_str)
         var_coeffs[var_name] = var_coeffs.get(var_name, 0) + coeff
     
     return Invariant(var_coeffs, const_val)
+
 
 def _parseFlowLines(lines: List[str], isPlaceFlow: bool) -> List[Invariant]:
     """
