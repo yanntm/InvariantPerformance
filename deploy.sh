@@ -126,18 +126,42 @@ for i in *.tgz; do
         tar xzf "$i"
         cd "$model_dir"
         # Clear useless formula files
-		# rm Reachability*.xml LTL*.xml UpperBounds.xml CTL*.xml        
+        # rm Reachability*.xml LTL*.xml UpperBounds.xml CTL*.xml        
         # Remove unnecessary files
         rm -f *.xml *.txt
-        # Convert PNML to GreatSPN format (.def/.net)
+        
         set +e
-        $GSOL -use-pnml-ids "$PWD/model.pnml" -export-greatspn "$PWD/model"
-        status=$?
-        set -e
-        if [[ ! -f model.def ]]; then
-            echo "Warning: Conversion failed in $PWD (status: $status)" >&2
-            rm -f model.net model.def
+        # Step 1: Normalize PNML
+        if [ ! -f "model.norm.pnml" ]; then
+            $PETRISPOT64 -i "$PWD/model.pnml" --normalizePNML="$PWD/model.norm.pnml"
+            status_norm=$?
+            if [ $status_norm -ne 0 ]; then
+                echo "Warning: Normalized PNML export failed in $PWD (status: $status_norm)" >&2
+                rm -f model.norm.pnml
+            fi
         fi
+        
+        # Step 2: Export matrix from normalized PNML
+        if [ -f "model.norm.pnml" ] && [ ! -f "model.mtx" ]; then
+            $PETRISPOT64 -i "$PWD/model.norm.pnml" --exportAsMatrix="$PWD/model.mtx"
+            status_mtx=$?
+            if [ $status_mtx -ne 0 ]; then
+                echo "Warning: Matrix export failed in $PWD (status: $status_mtx)" >&2
+                rm -f model.mtx
+            fi
+        fi
+        
+        # Step 3: Convert normalized PNML to GreatSPN format (.def/.net)
+        if [ -f "model.norm.pnml" ] && [ ! -f "model.def" ]; then
+            $GSOL -use-pnml-ids "$PWD/model.norm.pnml" -export-greatspn "$PWD/model"
+            status_gsol=$?
+            if [ $status_gsol -ne 0 ] || [ ! -f "model.def" ]; then
+                echo "Warning: GreatSPN conversion failed in $PWD (status: $status_gsol)" >&2
+                rm -f model.net model.def
+            fi
+        fi
+        set -e
+        
         cd ..
     fi
 done
