@@ -2,7 +2,7 @@
 # run.sh: Run performance tests on models for a given mode and a selected set of tools.
 #
 # Usage:
-#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t TIMEOUT] [--extra-petri-flags=FLAGS] [--model-filter=RANGE]
+#   ./run.sh [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn,petrisage] [--mem=VALUE] [-t TIMEOUT] [--extra-petri-flags=FLAGS] [--extra-petrisage-flags=FLAGS] [--model-filter=RANGE]
 #
 # MODE must be one of:
 #   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -15,6 +15,7 @@
 #   petri64    : PetriSpot in 64-bit mode (LIP6, Sorbonne Université)
 #   petri128   : PetriSpot in 128-bit mode (LIP6, Sorbonne Université)
 #   gspn       : GreatSPN (Università di Torino)
+#   petrisage  : PetriSage with SageMath (uses model.mtx, TFLOWS or PFLOWS only)
 #
 # --mem=VALUE:
 #   Set memory limit for systemd-run.
@@ -27,20 +28,24 @@
 #   Additional flags for PetriSpot tools (e.g., "--noSingleSignRow --loopLimit=500").
 #   Logs will include a suffix based on these flags (e.g., ModelName.nSSR_lL500.petri64).
 #
+# --extra-petrisage-flags=FLAGS:
+#   Additional flags for PetriSage (e.g., "--backend=pari_kernel").
+#   Logs will include a suffix based on these flags (e.g., ModelName.pK.petrisage).
+#
 # --model-filter=RANGE:
 #   Process only models whose names start with a letter in the specified range (inclusive).
 #   Format: X-Y (e.g., A-D, E-L, M-R, S-Z). Case-insensitive.
 #   Default: process all models.
 #
 # Examples:
-#   ./run.sh FLOWS
-#   ./run.sh PSEMIFLOWS --tools=tina4ti2,petri64 -t 300
-#   ./run.sh PFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500"
-#   ./run.sh TFLOWS --model-filter=A-D
+#   ./run.sh TFLOWS
+#   ./run.sh PFLOWS --tools=tina4ti2,petri64,petrisage -t 300
+#   ./run.sh TFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500" --extra-petrisage-flags="--backend=snf"
+#   ./run.sh PFLOWS --model-filter=A-D
 
 print_usage() {
     cat <<EOF
-Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn] [--mem=VALUE] [-t=TIMEOUT] [-solution] [--extra-petri-flags=FLAGS] [--model-filter=RANGE]
+Usage: $0 [MODE] [--tools=tina,tina4ti2,itstools,petri32,petri64,petri128,gspn,petrisage] [--mem=VALUE] [-t=TIMEOUT] [-solution] [--extra-petri-flags=FLAGS] [--extra-petrisage-flags=FLAGS] [--model-filter=RANGE]
 
 MODE must be one of:
   FLOWS, SEMIFLOWS, TFLOWS, PFLOWS, TSEMIFLOWS, PSEMIFLOWS
@@ -53,6 +58,7 @@ Tool names and their meanings: (default : all tools)
   petri64    : PetriSpot in 64-bit mode (LIP6, Sorbonne Université)
   petri128   : PetriSpot in 128-bit mode (LIP6, Sorbonne Université)
   gspn       : GreatSPN (Università di Torino)
+  petrisage  : PetriSage with SageMath (uses model.mtx, TFLOWS or PFLOWS only)
 
 --mem=VALUE:
   Set memory limit for systemd-run (default: 16G, "ANY" disables).
@@ -67,16 +73,20 @@ Tool names and their meanings: (default : all tools)
   Additional flags for PetriSpot tools (e.g., "--noSingleSignRow --loopLimit=500").
   Logs will include a suffix based on these flags (e.g., ModelName.nSSR_lL500.petri64).
 
+--extra-petrisage-flags=FLAGS:
+  Additional flags for PetriSage (e.g., "--backend=pari_kernel").
+  Logs will include a suffix based on these flags (e.g., ModelName.pK.petrisage).
+
 --model-filter=RANGE:
   Process only models whose names start with a letter in the specified range (inclusive).
   Format: X-Y (e.g., A-D, E-L, M-R, S-Z). Case-insensitive.
   Default: process all models.
 
 Examples:
-  $0 FLOWS
-  $0 PSEMIFLOWS --tools=tina4ti2,petri64 -t=300 -solution
-  $0 PFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500"
-  $0 TFLOWS --model-filter=A-D
+  $0 TFLOWS
+  $0 PFLOWS --tools=tina4ti2,petri64,petrisage -t=300 -solution
+  $0 TFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500" --extra-petrisage-flags="--backend=snf"
+  $0 PFLOWS --model-filter=A-D
 EOF
 }
 
@@ -101,11 +111,12 @@ MODE="$1"
 shift
 
 # Default values
-TOOLS_TO_RUN="tina,tina4ti2,itstools,petri32,petri64,petri128,gspn"
+TOOLS_TO_RUN="tina,tina4ti2,itstools,petri32,petri64,petri128,gspn,petrisage"
 MEM_LIMIT="16G"
 TIMEOUT_SEC=120
 SOLUTION=false
 EXTRA_PETRI_FLAGS=""
+EXTRA_PETRISAGE_FLAGS=""
 MODEL_FILTER_START=""
 MODEL_FILTER_END=""
 
@@ -122,6 +133,9 @@ for arg in "$@"; do
       ;;
     --extra-petri-flags=*)
       EXTRA_PETRI_FLAGS="${arg#*=}"
+      ;;
+    --extra-petrisage-flags=*)
+      EXTRA_PETRISAGE_FLAGS="${arg#*=}"
       ;;
     --model-filter=*)
       range="${arg#*=}"
@@ -162,7 +176,7 @@ if ! [[ "$TIMEOUT_SEC" =~ ^[0-9]+$ ]] || [ "$TIMEOUT_SEC" -le 0 ]; then
 fi
 
 # Validate provided tool names.
-allowed_tools="tina tina4ti2 itstools petri32 petri64 petri128 gspn"
+allowed_tools="tina tina4ti2 itstools petri32 petri64 petri128 gspn petrisage"
 IFS=',' read -ra selected_tools <<< "$TOOLS_TO_RUN"
 for tool in "${selected_tools[@]}"; do
     valid=0
@@ -196,6 +210,7 @@ declare -A tool_to_exe=(
     ["petri64"]="$PETRISPOT64"
     ["petri128"]="$PETRISPOT128"
     ["gspn"]="$DSPN"
+    ["petrisage"]="$PETRISAGE"
 )
 
 # Check only selected tools
@@ -233,6 +248,7 @@ case "$MODE" in
     ITS_FLAG="--Tflows"
     PETRISPOT_FLAG="--Tflows"
     GSPN_FLAG="-tbasis"
+    PETRISAGE_MODE="TFLOWS"
     LOGDIR="logs_tflows"
     ;;
   PFLOWS)
@@ -240,6 +256,7 @@ case "$MODE" in
     ITS_FLAG="--Pflows"
     PETRISPOT_FLAG="--Pflows"
     GSPN_FLAG="-pbasis"
+    PETRISAGE_MODE="PFLOWS"
     LOGDIR="logs_pflows"
     ;;
   TSEMIFLOWS)
@@ -327,7 +344,7 @@ run_petrispot() {
     temp_timelog="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR.timelog"
     [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
     if [ ! -f "$final_logfile" ]; then
-      cmd="$LIMITS \"$petri_cmd\" -i \"$model_dir/model.pnml\" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS > \"$temp_logfile\" 2> \"$temp_timelog\""
+      cmd="$LIMITS \"$petri_cmd\" -i \"$model_dir/model.norm.pnml\" $PETRISPOT_FLAG $EXTRA_PETRI_FLAGS > \"$temp_logfile\" 2> \"$temp_timelog\""
       echo "Running $tool_name: $cmd"
       eval "$cmd"
       cat "$temp_timelog" >> "$temp_logfile"
@@ -335,6 +352,40 @@ run_petrispot() {
       rm -f "$temp_timelog"
       if [ "$SOLUTION" = true ]; then
         python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrispot --log="$final_logfile" \
+          --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model${extra_suffix}${log_suffix}"
+      fi
+    fi
+  fi
+}
+
+# --- Function: Run PetriSage ---
+run_petrisage() {
+  local tool_name="petrisage"
+  local petrisage_cmd="$PETRISAGE"
+  local log_suffix=".petrisage"
+  local model_dir="$1"  # Model directory
+  local model="$2"      # Model name
+  local extra_suffix="$3"  # Extra flags suffix (e.g., ".pK")
+
+  if contains_tool "$tool_name"; then
+    # Check if mode is supported by petrisage
+    if [ "$MODE" != "TFLOWS" ] && [ "$MODE" != "PFLOWS" ]; then
+      echo "Warning: petrisage only supports TFLOWS or PFLOWS, skipping for mode $MODE"
+      return
+    fi
+    final_logfile="$LOGS/$model${extra_suffix}${log_suffix}"
+    temp_logfile="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR"
+    temp_timelog="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR.timelog"
+    [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
+    if [ ! -f "$final_logfile" ]; then
+      cmd="$LIMITS bash -c 'source \"$ROOT/config.sh\" && \$MICROMAMBA activate \$SAGE_ENV && \"$petrisage_cmd\" \"$model_dir/model.mtx\" \"$temp_logfile.tba\" $PETRISAGE_MODE $EXTRA_PETRISAGE_FLAGS' > \"$temp_logfile\" 2> \"$temp_timelog\""
+      echo "Running $tool_name: $cmd"
+      eval "$cmd"
+      cat "$temp_timelog" >> "$temp_logfile"
+      mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
+      rm -f "$temp_timelog"
+      if [ "$SOLUTION" = true ]; then
+        python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrisage --log="$final_logfile" \
           --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model${extra_suffix}${log_suffix}"
       fi
     fi
@@ -362,7 +413,7 @@ for model_dir in "$MODELDIR"/*/; do
         if [ ! -f "$final_logfile" ]; then
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
-            cmd="$LIMITS \"$tina_cmd\" @MLton fixed-heap 15G -- $TINA_FLAG -mp \"$model_dir/model.pnml\" > \"$temp_logfile\" 2> \"$temp_timelog\""
+            cmd="$LIMITS \"$tina_cmd\" @MLton fixed-heap 15G -- $TINA_FLAG -mp \"$model_dir/model.norm.pnml\" > \"$temp_logfile\" 2> \"$temp_timelog\""
             echo "Running tina: $cmd"
             eval "$cmd"
             cat "$temp_timelog" >> "$temp_logfile"
@@ -385,7 +436,7 @@ for model_dir in "$MODELDIR"/*/; do
             export PATH=$ROOT/bin:$PATH
             tina_cmd="$STRUCT"
             if [ -f large_marking ]; then tina_cmd="$STRUCTLARGE"; fi
-            cmd="$LIMITS \"$tina_cmd\" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I \"$model_dir/model.pnml\" > \"$temp_logfile\" 2> \"$temp_timelog\""
+            cmd="$LIMITS \"$tina_cmd\" @MLton max-heap 8G -- -4ti2 $TINA_FLAG -I \"$model_dir/model.norm.pnml\" > \"$temp_logfile\" 2> \"$temp_timelog\""
             echo "Running tina4ti2: $cmd"
             eval "$cmd"
             cat "$temp_timelog" >> "$temp_logfile"
@@ -414,21 +465,30 @@ for model_dir in "$MODELDIR"/*/; do
             rm -f "$temp_timelog"
             if [ "$SOLUTION" = true ]; then
                 python3 "$ROOT/InvCompare/collectSolution.py" --tool=itstools --log="$final_logfile" \
-                    --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.its"
+                  --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model.its"
             fi
         fi
     fi
 
     # Compute log suffix for PetriSpot tools if extra flags are provided
-    extra_flags_suffix=""
+    extra_petri_suffix=""
     if [ -n "$EXTRA_PETRI_FLAGS" ]; then
-        extra_flags_suffix=".$(compress_flags "$EXTRA_PETRI_FLAGS")"
+        extra_petri_suffix=".$(compress_flags "$EXTRA_PETRI_FLAGS")"
     fi
 
     # --- Run PetriSpot variants ---
-    run_petrispot "petri32" "$PETRISPOT32" ".petri32" "$model_dir" "$model" "$extra_flags_suffix"
-    run_petrispot "petri64" "$PETRISPOT64" ".petri64" "$model_dir" "$model" "$extra_flags_suffix"
-    run_petrispot "petri128" "$PETRISPOT128" ".petri128" "$model_dir" "$model" "$extra_flags_suffix"
+    run_petrispot "petri32" "$PETRISPOT32" ".petri32" "$model_dir" "$model" "$extra_petri_suffix"
+    run_petrispot "petri64" "$PETRISPOT64" ".petri64" "$model_dir" "$model" "$extra_petri_suffix"
+    run_petrispot "petri128" "$PETRISPOT128" ".petri128" "$model_dir" "$model" "$extra_petri_suffix"
+
+    # Compute log suffix for PetriSage if extra flags are provided
+    extra_petrisage_suffix=""
+    if [ -n "$EXTRA_PETRISAGE_FLAGS" ]; then
+        extra_petrisage_suffix=".$(compress_flags "$EXTRA_PETRISAGE_FLAGS")"
+    fi
+
+    # --- Run PetriSage ---
+    run_petrisage "$model_dir" "$model" "$extra_petrisage_suffix"
 
     # --- GreatSPN ---
     if contains_tool gspn; then
