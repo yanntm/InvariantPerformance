@@ -6,7 +6,7 @@ from solution.generic import create_solution
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collect solutions from tool logs into .sol files.")
-    parser.add_argument("--tool", required=True, choices=["tina", "itstools", "petrispot", "greatspn"],
+    parser.add_argument("--tool", required=True, choices=["tina", "itstools", "petrispot", "greatspn", "petrisage"],
                         help="Tool name to process.")
     parser.add_argument("--log", required=True, help="Path to the tool's log file.")
     parser.add_argument("--model", required=True, help="Path to the model folder.")
