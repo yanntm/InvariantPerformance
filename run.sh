@@ -365,7 +365,7 @@ run_petrisage() {
   local log_suffix=".petrisage"
   local model_dir="$1"  # Model directory
   local model="$2"      # Model name
-  local extra_suffix="$3"  # Extra flags suffix (e.g., ".pK")
+  local extra_suffix="$3"  # Extra flags suffix (e.g., ".h")
 
   if contains_tool "$tool_name"; then
     # Check if mode is supported by petrisage
@@ -378,7 +378,7 @@ run_petrisage() {
     temp_timelog="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR.timelog"
     [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
     if [ ! -f "$final_logfile" ]; then
-      cmd="$LIMITS bash -c 'source \"$ROOT/config.sh\" && \$MICROMAMBA activate \$SAGE_ENV && \"$petrisage_cmd\" \"$model_dir/model.mtx\" \"$temp_logfile.tba\" $PETRISAGE_MODE $EXTRA_PETRISAGE_FLAGS' > \"$temp_logfile\" 2> \"$temp_timelog\""
+      cmd="$LIMITS \"$MICROMAMBA\" run -r \"$ROOT/micromamba\" -n sage \"$petrisage_cmd\" \"$model_dir/model.mtx\" \"$temp_logfile.tba\" $PETRISAGE_MODE $EXTRA_PETRISAGE_FLAGS > \"$temp_logfile\" 2> \"$temp_timelog\""
       echo "Running $tool_name: $cmd"
       eval "$cmd"
       cat "$temp_timelog" >> "$temp_logfile"
