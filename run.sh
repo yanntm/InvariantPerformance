@@ -376,21 +376,28 @@ run_petrisage() {
     final_logfile="$LOGS/$model${extra_suffix}${log_suffix}"
     temp_logfile="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR"
     temp_timelog="/tmp/$model${extra_suffix}${log_suffix}$LOGDIR.timelog"
+    temp_tba_file="$temp_logfile.tba"
+    final_sol_file="$LOGS/$model${extra_suffix}${log_suffix}.sol.gz"
     [ -f "$temp_timelog" ] && rm -f "$temp_timelog"
     if [ ! -f "$final_logfile" ]; then
-      cmd="$LIMITS \"$MICROMAMBA\" run -r \"$ROOT/micromamba\" -n sage \"$petrisage_cmd\" \"$model_dir/model.mtx\" \"$temp_logfile.tba\" $PETRISAGE_MODE $EXTRA_PETRISAGE_FLAGS > \"$temp_logfile\" 2> \"$temp_timelog\""
+      cmd="$LIMITS \"$MICROMAMBA\" run -r \"$ROOT/micromamba\" -n sage \"$petrisage_cmd\" \"$model_dir/model.mtx\" \"$temp_tba_file\" $PETRISAGE_MODE $EXTRA_PETRISAGE_FLAGS > \"$temp_logfile\" 2> \"$temp_timelog\""
       echo "Running $tool_name: $cmd"
       eval "$cmd"
       cat "$temp_timelog" >> "$temp_logfile"
       mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
       rm -f "$temp_timelog"
-      if [ "$SOLUTION" = true ]; then
-        python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrisage --log="$final_logfile" \
-          --model="$model_dir" --mode="$MODE" || echo "Warning: Failed to collect solution for $model${extra_suffix}${log_suffix}"
+      if [ "$SOLUTION" = true ] && [ -f "$temp_tba_file" ]; then
+        # Parse .tba and create .sol.gz directly in $LOGS
+        "$MICROMAMBA" run -r "$ROOT/micromamba" -n sage python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrisage --log="$final_logfile" --model="$model_dir" --mode="$MODE" && gzip -f "$final_logfile.sol"
+        rm -f "$temp_tba_file"  # Clean up temporary .tba
+      else
+        [ -f "$temp_tba_file" ] || echo "Warning: No .tba file produced for $model${extra_suffix}${log_suffix}, skipping solution collection"
+        [ -f "$temp_tba_file" ] && rm -f "$temp_tba_file"  # Clean up even if no solution
       fi
     fi
   fi
 }
+
 
 # --- Process Each Model ---
 for model_dir in "$MODELDIR"/*/; do
