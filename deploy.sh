@@ -1,6 +1,6 @@
 #!/bin/bash
 # deploy.sh: Install tools, models, Z3, set up virtualenv, perform model conversion,
-# and write config.sh with environment variables.
+# and write config.sh with environment variables. Now includes SageMath and PetriSage setup.
 
 set -e
 
@@ -34,7 +34,7 @@ if [ ! -x "bin/4ti2int64" ]; then
   chmod a+x *
   cd ..
 fi  
-  
+
 # GreatSPN
 mkdir -p greatspn
 pushd greatspn > /dev/null
@@ -161,14 +161,41 @@ for i in *.tgz; do
             fi
         fi
         set -e
-        
         cd ..
     fi
 done
 popd > /dev/null
 
+# --- Install Micromamba and Sage Environment ---
+mkdir -p bin
+pushd bin > /dev/null
+if [ ! -f "micromamba" ]; then
+    wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    mv bin/micromamba .
+    rmdir bin
+    chmod +x micromamba
+fi
+export MICROMAMBA="$PWD/micromamba"
+popd > /dev/null
+
+# Set up micromamba root prefix under $ROOT
+mkdir -p "$ROOT/micromamba"
+if [ ! -d "$ROOT/micromamba/envs/sage" ]; then
+    "$MICROMAMBA" create -r "$ROOT/micromamba" -n sage -c conda-forge sage -y
+fi
+export SAGE_ENV="$ROOT/micromamba/envs/sage"
+
+# --- Install PetriSage ---
+mkdir -p petrisage
+pushd petrisage > /dev/null
+if [ ! -f "petrisage.py" ]; then
+    wget https://github.com/yanntm/PetriSpot/raw/refs/heads/master/PetriSage/petrisage.py
+    chmod +x petrisage.py
+fi
+export PETRISAGE="$PWD/petrisage.py"
+popd > /dev/null
+
 # --- Write Configuration File ---
-# Only ROOT and MODELDIR are hard-coded; tool exports use the current values.
 cat > config.sh <<EOF
 #!/bin/bash
 export ROOT="$ROOT"
@@ -185,8 +212,11 @@ export TIMEOUT="$TIMEOUT"
 export Z3_DIR="$Z3_DIR"
 export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
 export PYTHONPATH="$LIB_DIR:$PYTHONPATH"
+export MICROMAMBA="$MICROMAMBA"
+export SAGE_ENV="$SAGE_ENV"
+export PETRISAGE="$PETRISAGE"
 EOF
 
 chmod +x config.sh
 
-echo "Deployment complete. Run 'run.sh' with a chosen mode."
+echo "Deployment complete. Source 'config.sh' and use '\$MICROMAMBA activate \$SAGE_ENV' to enable Sage."
