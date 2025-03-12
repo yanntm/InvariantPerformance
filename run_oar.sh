@@ -12,6 +12,7 @@
 #   petri64    : PetriSpot in 64-bit mode (LIP6, Sorbonne Université)
 #   petri128   : PetriSpot in 128-bit mode (LIP6, Sorbonne Université)
 #   gspn       : GreatSPN (Università di Torino)
+#   petrisage  : PetriSage with SageMath (uses model.mtx, TFLOWS or PFLOWS only)
 #
 # For PetriSpot tools, a matrix of extra flags is applied (see PETRI_MATRIX below).
 #
@@ -30,15 +31,17 @@ WORKDIR="/home/ythierry/git/InvariantPerformance"
 
 # New modes to run
 #MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
+MODES=(PFLOWS TFLOWS)
 #MODES=(PSEMIFLOWS)
-MODES=(PSEMIFLOWS TSEMIFLOWS)
+#MODES=(PSEMIFLOWS TSEMIFLOWS)
 
 # Allowed tool identifiers
 #TOOLS=(tina tina4ti2 itstools petri32 petri64 petri128 gspn)
 # TOOLS=(tina4ti2)
 #TOOLS=(petri32 petri64 petri128)
-TOOLS=(tina tina4ti2 petri64 gspn)
-#TOOLS=(petri64 itstools)
+#TOOLS=(tina tina4ti2 petri64 gspn)
+#TOOLS=(petri64)
+TOOLS=(petrisage)
 
 # Model filter ranges to partition the workload
 MODEL_FILTERS=("A-B" "C-D" "E-F" "G-I" "J-L" "M-O" "P-R" "S-U" "V-Z")
@@ -50,16 +53,32 @@ OAR_CONSTRAINTS='{(host like "tall%")}/nodes=1/core=4,walltime=12:00:00'
 # PetriSpot configuration matrix (array of arrays)
 declare -A PETRI_MATRIX
 PETRI_MATRIX[0]="--noSingleSignRow ''"                        # 2 options: on or off
-#PETRI_MATRIX[1]="--loopLimit=1 --loopLimit=500 --loopLimit=-1"  # 3 options
-PETRI_MATRIX[1]="--loopLimit=500"  # 3 options
+PETRI_MATRIX[1]="--loopLimit=1 --loopLimit=500 --loopLimit=-1"  # 3 options
+#PETRI_MATRIX[1]="--loopLimit=500"  # 3 options
 PETRI_MATRIX[2]="--noTrivialCull ''"                          # 2 options
-PETRI_MATRIX[3]="--minBasis ''"                          # 2 options
+#PETRI_MATRIX[3]="--minBasis ''"                          # 2 options
+
+# PetriSage backend flags (fixed set, only for PFLOWS/TFLOWS)
+PETRISAGE_BACKENDS=("--extra-petrisage-flags=--backend=HNF" "--extra-petrisage-flags=--backend=PariKernel" "--extra-petrisage-flags=--backend=SNF" "--extra-petrisage-flags=--backend=Rational")
 
 # --- Utility: Check if a tool is a PetriSpot variant ---
 is_petrispot() {
   local tool="$1"
   case "$tool" in
     petri32|petri64|petri128)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# --- Utility: Check if a tool is PetriSage ---
+is_petrisage() {
+  local tool="$1"
+  case "$tool" in
+    petrisage)
       return 0
       ;;
     *)
@@ -121,6 +140,8 @@ for MODE in "${MODES[@]}"; do
     COMBINATIONS=()  # No 'local' here
     if is_petrispot "$TOOL"; then
       COMBINATIONS=("${PETRI_COMBINATIONS[@]}")
+    elif is_petrisage "$TOOL" && { [ "$MODE" = "PFLOWS" ] || [ "$MODE" = "TFLOWS" ]; }; then
+      COMBINATIONS=("${PETRISAGE_BACKENDS[@]}")
     else
       COMBINATIONS=("")
     fi
