@@ -358,6 +358,7 @@ run_petrispot() {
   fi
 }
 
+
 # --- Function: Run PetriSage ---
 run_petrisage() {
   local tool_name="petrisage"
@@ -387,8 +388,9 @@ run_petrisage() {
       mv "$temp_logfile" "$final_logfile" || echo "Warning: Failed to move $temp_logfile to $final_logfile"
       rm -f "$temp_timelog"
       if [ "$SOLUTION" = true ] && [ -f "$temp_tba_file" ]; then
-        # Parse .tba and create .sol.gz directly in $LOGS
-        "$MICROMAMBA" run -r "$ROOT/micromamba" -n sage python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrisage --log="$final_logfile" --model="$model_dir" --mode="$MODE" && gzip -f "$final_logfile.sol"
+        # Parse .tba and create .sol.gz in /tmp, then move to $LOGS
+        python3 "$ROOT/InvCompare/collectSolution.py" --tool=petrisage --log="$temp_logfile" --model="$model_dir" --mode="$MODE"
+        [ -f "$temp_logfile.sol.gz" ] && mv "$temp_logfile.sol.gz" "$final_sol_file" || echo "Warning: Failed to move $temp_logfile.sol.gz to $final_sol_file"
         rm -f "$temp_tba_file"  # Clean up temporary .tba
       else
         [ -f "$temp_tba_file" ] || echo "Warning: No .tba file produced for $model${extra_suffix}${log_suffix}, skipping solution collection"
@@ -397,7 +399,6 @@ run_petrisage() {
     fi
   fi
 }
-
 
 # --- Process Each Model ---
 for model_dir in "$MODELDIR"/*/; do
