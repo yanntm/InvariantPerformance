@@ -85,7 +85,7 @@ Tool names and their meanings: (default : all tools)
 Examples:
   $0 TFLOWS
   $0 PFLOWS --tools=tina4ti2,petri64,petrisage -t=300 -solution
-  $0 TFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500" --extra-petrisage-flags="--backend=snf"
+  $0 TFLOWS --mem=ANY --extra-petri-flags="--noSingleSignRow --loopLimit=500" --extra-petrisage-flags="--backend=SNF"
   $0 PFLOWS --model-filter=A-D
 EOF
 }
@@ -484,7 +484,7 @@ for model_dir in "$MODELDIR"/*/; do
     # Compute log suffix for PetriSage if extra flags are provided
     extra_petrisage_suffix=""
     if [ -n "$EXTRA_PETRISAGE_FLAGS" ]; then
-        extra_petrisage_suffix=".$(compress_flags "$EXTRA_PETRISAGE_FLAGS")"
+        extra_petrisage_suffix=".$(echo "$EXTRA_PETRISAGE_FLAGS" | sed 's/--backend=//')"
     fi
 
     # --- Run PetriSage ---
