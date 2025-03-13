@@ -475,17 +475,13 @@ sub parse_gspn_file {
                 my $user_time = $1;
                 my $sys_time  = $2;
                 $ptime = ($user_time + $sys_time) * 1000.0;
-            } elsif ($line =~ /(\d+\.\d+)user\s+(\d+\.\d+)system\s+(\d+):(\d+)\.(\d+)elapsed/) {
-                my $user = $1;
-                my $system = $2;
-                my $minutes = $3;
-                my $seconds = $4;
-                my $fraction = $5;
-                my $frac_ms = $fraction * (10 ** (3 - length($fraction)));
-                $timecmd = 60000 * $minutes + 1000 * $seconds + $frac_ms;
-            }
-            if ($line =~ /(\d+)maxresident\)k/) {
-                $tmem = $1;
+             } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
+                $timecmd = $1;
+                $tmem = $2;
+                if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
+                    my $frac_ms = $3 * (10 ** (3 - length($3)));
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;
+                }
             }
         }
         close $fh;
@@ -509,6 +505,78 @@ sub parse_gspn_file {
         }
 
         my $time_internal = $ptime;
+        my %sol_metrics = compute_solution_metrics($file);
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
+    }
+}
+
+sub parse_petrisage_file {
+    my ($file) = @_;
+    if ($file =~ /\.petrisage$/) {
+        my $model = $file;
+        my $flags = "";
+        my $tool = "PetriSage";
+        if ($file =~ /^(.*)\.([^.]*)\.petrisage$/) {
+            $tool .= "_$2" if $2;  # Append backend (e.g., HNF)
+            $model = $1;
+        } else {
+            $model =~ s/\.petrisage$//;
+        }
+        my $status = "UNK";
+        my $nbp = -1;    # P flows
+        my $nbt = -1;    # T flows
+        my $ptime = -1;  # Internal computation time (not reliably logged)
+        my $timecmd = -1;
+        my $tmem = -1;
+        my $cardp = -1;  # Places (cols)
+        my $cardt = -1;  # Transitions (rows)
+        my $carda = -1;  # Arcs (non-zero entries)
+        my $examination = "UNK";
+
+        open my $fh, '<', $file or die "Could not open file '$file': $!";
+        my $first_line = <$fh>;
+        if ($first_line =~ /TFLOWS/) {
+            $examination = "TFLOWS";
+        } elsif ($first_line =~ /PFLOWS/) {
+            $examination = "PFLOWS";
+        }
+        seek($fh, 0, 0);
+
+        while (my $line = <$fh>) {
+            chomp $line;
+            if ($line =~ /Loaded matrix: (\d+)x(\d+), (\d+) non-zero entries/) {
+                $cardp = $1;  # Columns (places)
+                $cardt = $2;  # Rows (transitions)
+                $carda = $3;  # Non-zero entries (arcs)
+            } elsif ($line =~ /Extracted (\d+) flows/) {
+                if ($examination eq "PFLOWS") {
+                    $nbp = $1;
+                } elsif ($examination eq "TFLOWS") {
+                    $nbt = $1;
+                }
+            } elsif ($line =~ /Computed (\d+) pflows/) {
+                $nbp = $1;
+                $status = "OK";
+            } elsif ($line =~ /Computed (\d+) tflows/) {
+                $nbt = $1;
+                $status = "OK";
+            } elsif ($line =~ /TIME LIMIT: Killed by timeout after (\d+) seconds/) {
+                $timecmd = $1 * 1000;
+                $status = "TO";
+            } elsif ($line =~ /Command exited with non-zero status/) {
+                $status = "ERR";  # All non-zero exits, including 137
+             } elsif ($line =~ /.*user .*system (.*)elapsed .*CPU \(.*avgtext+.*avgdata (.*)maxresident\)k/) {
+                $timecmd = $1;
+                $tmem = $2;
+                if ($timecmd =~ /(\d+):(\d+)\.(\d+)/) {
+                    my $frac_ms = $3 * (10 ** (3 - length($3)));
+                    $timecmd = 60000 * $1 + 1000 * $2 + $frac_ms;
+                }
+            }
+        }
+        close $fh;
+
+        my $time_internal = $ptime;  # -1 as agreed
         my %sol_metrics = compute_solution_metrics($file);
         print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
@@ -547,6 +615,8 @@ for (my $i = 0; $i < $num_processes && $i * $chunk_size < $total_files; $i++) {
                 parse_tina_file($file);
             } elsif ($file =~ /\.gspn$/) {
                 parse_gspn_file($file);
+            } elsif ($file =~ /\.petrisage$/) {
+                parse_petrisage_file($file);
             }
         }
         exit 0;  # Child exits after processing its chunk
