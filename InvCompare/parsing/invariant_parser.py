@@ -5,14 +5,14 @@ from invariants.invariant import Invariant
 def parse_invariant_line(expr: str) -> Optional[Invariant]:
     """
     Parse an invariant string of the form:
-       <term> <term> ... = <constant>
+       <term> <term> ... = <constant> (NB)
     where each term is:
        optional whitespace, optional sign, optional whitespace, 
        optional integer, optional '*' and then an identifier (starting with a letter).
     
     Example inputs:
-       "-p1003 + p1054 - p915 + p957 - p958 + p960 - p961 + p965 + p977 + p980 + p982 + p994 = 0"
-       "capacity_c0 + capacity_c1 + 4*resource_c0 + resource_c1 = 10"
+       "-p1003 + p1054 - p915 + p957 - p958 + p960 - p961 + p965 + p977 + p980 + p982 + p994 = 0 (1)"
+       "capacity_c0 + capacity_c1 + 4*resource_c0 + resource_c1 = 10 (12)"
     
     Returns an Invariant object or None if parsing fails.
     """
@@ -24,6 +24,7 @@ def parse_invariant_line(expr: str) -> Optional[Invariant]:
         rhs = "0"
     
     try:
+        rhs = rhs.split('(')[0]  # Ignore anything after '('
         const_val = int(rhs.strip())
     except ValueError:
         return None
