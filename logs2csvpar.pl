@@ -144,19 +144,19 @@ sub parse_petri_file {
             } elsif ($line =~ /overflow/i) {
                 $overflow = 1;
                 next;
-            } elsif ($line =~ /Computed (\d+) P\s+flows in (\d+) ms/) {
+            } elsif ($line =~ /Computed (\d+) P\s+flows .* in (\d+) ms/) {
                 $nbp = $1;
                 $ptime = $2;
                 next;
-            } elsif ($line =~ /Computed (\d+) T\s+flows in (\d+) ms/) {
+            } elsif ($line =~ /Computed (\d+) T\s+flows .* in (\d+) ms/) {
                 $nbt = $1;
                 $ttime = $2;
                 next;
-            } elsif ($line =~ /Computed (\d+) P\s+semiflows in (\d+) ms/) {
+            } elsif ($line =~ /Computed (\d+) P\s+semiflows .* in (\d+) ms/) {
                 $nbp = $1;
                 $ptime = $2;
                 next;
-            } elsif ($line =~ /Computed (\d+) T\s+semiflows in (\d+) ms/) {
+            } elsif ($line =~ /Computed (\d+) T\s+semiflows .* in (\d+) ms/) {
                 $nbt = $1;
                 $ttime = $2;
                 next;
