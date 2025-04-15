@@ -24,8 +24,9 @@ def parse_invariant_line(expr: str) -> Optional[Invariant]:
         rhs = "0"
     
     try:
-        rhs = rhs.split('(')[0]  # Ignore anything after '('
-        const_val = int(rhs.strip())
+        rhs = rhs.strip()
+        rhs = rhs.split(' ')[0]  # Ignore anything after '('
+        const_val = int(rhs)
     except ValueError:
         return None
     
