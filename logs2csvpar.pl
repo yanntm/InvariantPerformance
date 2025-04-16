@@ -119,6 +119,7 @@ sub parse_petri_file {
         my $cardp = -1, my $cardt = -1, my $carda = -1;
         my $examination = "UNK";
         my $overflow = 0;
+        my $nbcompressed = -1;
 
         open my $fh, '<', $file or die "Could not open file '$file': $!";
         my $first_line = <$fh>;
@@ -159,6 +160,9 @@ sub parse_petri_file {
             } elsif ($line =~ /Computed (\d+) T\s+semiflows .* in (\d+) ms/) {
                 $nbt = $1;
                 $ttime = $2;
+                next;
+            } elsif ($line =~ /Total of (\d+) decompressed invariants./) {
+                $nbcompressed = $1;
                 next;
             } elsif ($line =~ /Parsed PT model containing (\d+) places and (\d+) transitions and (\d+) arcs in (\d+) ms/) {
                 $cardp = $1;
@@ -204,7 +208,7 @@ sub parse_petri_file {
         }
 
         my %sol_metrics = compute_solution_metrics($file);
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$nbcompressed,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
@@ -290,7 +294,7 @@ sub parse_its_file {
 
         my $time_internal = $tottime;
         my %sol_metrics = compute_solution_metrics($file);
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,-1,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
@@ -410,7 +414,7 @@ sub parse_tina_file {
 
         my $time_internal = -1;
         my %sol_metrics = compute_solution_metrics($file);
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,-1,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
@@ -506,7 +510,7 @@ sub parse_gspn_file {
 
         my $time_internal = $ptime;
         my %sol_metrics = compute_solution_metrics($file);
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,-1,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
@@ -578,7 +582,7 @@ sub parse_petrisage_file {
 
         my $time_internal = $ptime;  # -1 as agreed
         my %sol_metrics = compute_solution_metrics($file);
-        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
+        print "$model,$tool,$examination,$cardp,$cardt,$carda,$nbp,$nbt,-1,$time_internal,$sol_metrics{SolSizeKB},$sol_metrics{SolSize},$sol_metrics{SolPosSize},$sol_metrics{SolMaxCoeff},$sol_metrics{SolSumCoeff},$sol_metrics{SolNbCoeff},$timecmd,$tmem,$status\n";
     }
 }
 
@@ -587,7 +591,7 @@ sub parse_petrisage_file {
 $| = 1;
 
 # Write CSV header to stdout
-print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,TimeInternal,SolSizeKB,SolSize,SolPosSize,SolMaxCoeff,SolSumCoeff,SolNbCoeff,Time,Mem,Status\n";
+print "Model,Tool,Examination,CardP,CardT,CardA,NbPInv,NbTInv,NbDecomp,TimeInternal,SolSizeKB,SolSize,SolPosSize,SolMaxCoeff,SolSumCoeff,SolNbCoeff,Time,Mem,Status\n";
 
 # Collect all files once and shuffle
 my @all_files = shuffle(<*petri*>, <*its>, <*struct>, <*tina>, <*gspn>);
