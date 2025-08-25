@@ -10,7 +10,7 @@ ROOT=$(pwd)
 
 # Tina
 mkdir -p tina
-pushd tina > /dev/null
+pushd tina 
 if [ ! -f "tina-3.8.5-amd64-linux.tgz" ]; then
     # we only need the struct binary, but in regular AND large versions:
     wget https://projects.laas.fr/tina/binaries/tina-3.8.5-large-amd64-linux.tgz
@@ -21,7 +21,7 @@ if [ ! -f "tina-3.8.5-amd64-linux.tgz" ]; then
 fi
 export STRUCT="$PWD/tina-3.8.5/bin/struct"
 export STRUCTLARGE="$PWD/tina-3.8.5/bin/struct_large"
-popd > /dev/null
+popd 
 
 if [ ! -x "bin/4ti2int64" ]; then 
   mkdir -p bin
@@ -37,7 +37,7 @@ fi
 
 # GreatSPN
 mkdir -p greatspn
-pushd greatspn > /dev/null
+pushd greatspn 
 if [ ! -f "DSPN-Tool" ]; then
     wget https://github.com/yanntm/MCC-drivers/raw/master/greatspn/greatspn/lib/app/portable_greatspn/bin/DSPN-Tool
 fi
@@ -47,11 +47,11 @@ fi
 chmod a+x DSPN-Tool GSOL
 export DSPN="$PWD/DSPN-Tool"
 export GSOL="$PWD/GSOL"
-popd > /dev/null
+popd 
 
 # PetriSpot
 mkdir -p petrispot
-pushd petrispot > /dev/null
+pushd petrispot 
 if [ ! -f "petri32" ]; then
     wget https://github.com/yanntm/PetriSpot/raw/Inv-Linux/petri32
     wget https://github.com/yanntm/PetriSpot/raw/Inv-Linux/petri64
@@ -61,11 +61,11 @@ fi
 export PETRISPOT32="$PWD/petri32"
 export PETRISPOT64="$PWD/petri64"
 export PETRISPOT128="$PWD/petri128"
-popd > /dev/null
+popd 
 
 # itstools
 mkdir -p itstools
-pushd itstools > /dev/null
+pushd itstools 
 if [ ! -f "its-tools" ]; then
     wget --progress=dot:mega https://lip6.github.io/ITSTools/fr.lip6.move.gal.itscl.product-linux.gtk.x86_64.zip
     unzip fr.lip6.move.gal.itscl.product-linux.gtk.x86_64.zip
@@ -74,7 +74,7 @@ if [ ! -f "its-tools" ]; then
     ./its-tools
 fi
 export ITSTOOLS="$PWD/its-tools"
-popd > /dev/null
+popd 
 
 # Timeout utility
 if [ ! -f "timeout.pl" ]; then
@@ -85,7 +85,7 @@ export TIMEOUT="$PWD/timeout.pl"
 
 # --- Install Z3 ---
 mkdir -p z3
-pushd z3 > /dev/null
+pushd z3 
 if [ ! -f "bin/libz3.so" ]; then
     wget https://github.com/Z3Prover/z3/releases/download/z3-4.14.0/z3-4.14.0-x64-glibc-2.35.zip
     unzip z3-4.14.0-x64-glibc-2.35.zip
@@ -95,7 +95,7 @@ if [ ! -f "bin/libz3.so" ]; then
 fi
 export Z3_DIR="$PWD"
 export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
-popd > /dev/null
+popd 
 
 # --- Setup Python Environment with Z3 Bindings ---
 LIB_DIR="$ROOT/lib"
@@ -115,7 +115,7 @@ if [ ! -d "INPUTS" ]; then
 fi
 export MODELDIR="$ROOT/INPUTS"
 
-pushd "$MODELDIR" > /dev/null
+pushd "$MODELDIR" 
 # Remove COL models
 rm *-COL-*.tgz 2>/dev/null || true
 
@@ -164,11 +164,11 @@ for i in *.tgz; do
         cd ..
     fi
 done
-popd > /dev/null
+popd 
 
 # --- Install Micromamba and Sage Environment ---
 mkdir -p bin
-pushd bin > /dev/null
+pushd bin 
 if [ ! -f "micromamba" ]; then
     wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
     mv bin/micromamba .
@@ -176,7 +176,7 @@ if [ ! -f "micromamba" ]; then
     chmod +x micromamba
 fi
 export MICROMAMBA="$PWD/micromamba"
-popd > /dev/null
+popd 
 
 # Set up micromamba root prefix under $ROOT
 mkdir -p "$ROOT/micromamba"
@@ -187,13 +187,13 @@ export SAGE_ENV="$ROOT/micromamba/envs/sage"
 
 # --- Install PetriSage ---
 mkdir -p petrisage
-pushd petrisage > /dev/null
+pushd petrisage 
 if [ ! -f "petrisage.py" ]; then
     wget https://github.com/yanntm/PetriSpot/raw/refs/heads/master/PetriSage/petrisage.py
     chmod +x petrisage.py
 fi
 export PETRISAGE="$PWD/petrisage.py"
-popd > /dev/null
+popd 
 
 # --- Write Configuration File ---
 cat > config.sh <<EOF
