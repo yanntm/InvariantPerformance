@@ -3,14 +3,18 @@
 # and write config.sh with environment variables. Now includes SageMath and PetriSage setup.
 
 set -e
+set -x
 
 ROOT=$(pwd)
+TOOLS_DIR="$ROOT/tools"
+
+mkdir -p "$TOOLS_DIR"
 
 # --- Install Tools ---
 
 # Tina
-mkdir -p tina
-pushd tina 
+mkdir -p "$TOOLS_DIR/tina"
+pushd "$TOOLS_DIR/tina"
 if [ ! -f "tina-3.8.5-amd64-linux.tgz" ]; then
     # we only need the struct binary, but in regular AND large versions:
     wget https://projects.laas.fr/tina/binaries/tina-3.8.5-large-amd64-linux.tgz
@@ -21,23 +25,24 @@ if [ ! -f "tina-3.8.5-amd64-linux.tgz" ]; then
 fi
 export STRUCT="$PWD/tina-3.8.5/bin/struct"
 export STRUCTLARGE="$PWD/tina-3.8.5/bin/struct_large"
-popd 
+popd
 
-if [ ! -x "bin/4ti2int64" ]; then 
-  mkdir -p bin
-  cd bin
+# 4ti2
+mkdir -p "$TOOLS_DIR/bin"
+pushd "$TOOLS_DIR/bin"
+if [ ! -x "4ti2int64" ]; then
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/4ti2int64
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/hilbert
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/zsolve
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/zbasis
-  wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/qsolve  
+  wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/qsolve
   chmod a+x *
-  cd ..
-fi  
+fi
+popd
 
 # GreatSPN
-mkdir -p greatspn
-pushd greatspn 
+mkdir -p "$TOOLS_DIR/greatspn"
+pushd "$TOOLS_DIR/greatspn"
 if [ ! -f "DSPN-Tool" ]; then
     wget https://github.com/yanntm/MCC-drivers/raw/master/greatspn/greatspn/lib/app/portable_greatspn/bin/DSPN-Tool
 fi
@@ -47,11 +52,11 @@ fi
 chmod a+x DSPN-Tool GSOL
 export DSPN="$PWD/DSPN-Tool"
 export GSOL="$PWD/GSOL"
-popd 
+popd
 
 # PetriSpot
-mkdir -p petrispot
-pushd petrispot 
+mkdir -p "$TOOLS_DIR/petrispot"
+pushd "$TOOLS_DIR/petrispot"
 if [ ! -f "petri32" ]; then
     wget https://github.com/yanntm/PetriSpot/raw/Inv-Linux/petri32
     wget https://github.com/yanntm/PetriSpot/raw/Inv-Linux/petri64
@@ -61,11 +66,11 @@ fi
 export PETRISPOT32="$PWD/petri32"
 export PETRISPOT64="$PWD/petri64"
 export PETRISPOT128="$PWD/petri128"
-popd 
+popd
 
 # itstools
-mkdir -p itstools
-pushd itstools 
+mkdir -p "$TOOLS_DIR/itstools"
+pushd "$TOOLS_DIR/itstools"
 if [ ! -f "its-tools" ]; then
     wget --progress=dot:mega https://lip6.github.io/ITSTools/fr.lip6.move.gal.itscl.product-linux.gtk.x86_64.zip
     unzip fr.lip6.move.gal.itscl.product-linux.gtk.x86_64.zip
@@ -74,18 +79,20 @@ if [ ! -f "its-tools" ]; then
     ./its-tools
 fi
 export ITSTOOLS="$PWD/its-tools"
-popd 
+popd
 
 # Timeout utility
+pushd "$TOOLS_DIR"
 if [ ! -f "timeout.pl" ]; then
     wget https://raw.githubusercontent.com/yanntm/MCC-drivers/master/bin/timeout.pl
 fi
 chmod a+x timeout.pl
 export TIMEOUT="$PWD/timeout.pl"
+popd
 
 # --- Install Z3 ---
-mkdir -p z3
-pushd z3 
+mkdir -p "$TOOLS_DIR/z3"
+pushd "$TOOLS_DIR/z3"
 if [ ! -f "bin/libz3.so" ]; then
     wget https://github.com/Z3Prover/z3/releases/download/z3-4.14.0/z3-4.14.0-x64-glibc-2.35.zip
     unzip z3-4.14.0-x64-glibc-2.35.zip
@@ -95,10 +102,10 @@ if [ ! -f "bin/libz3.so" ]; then
 fi
 export Z3_DIR="$PWD"
 export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
-popd 
+popd
 
 # --- Setup Python Environment with Z3 Bindings ---
-LIB_DIR="$ROOT/lib"
+LIB_DIR="$TOOLS_DIR/lib"
 mkdir -p "$LIB_DIR"
 if [ ! -d "$LIB_DIR/z3" ]; then
     # Get Python version (e.g., "Python 3.11.2" -> "python3.11")
@@ -110,12 +117,15 @@ export PYTHONPATH="$LIB_DIR:$PYTHONPATH"
 # Step 2: Download models and prepare them
 # --- Install Models and Convert ---
 if [ ! -d "INPUTS" ]; then
-    wget --progress=dot:mega https://mcc.lip6.fr/2024/archives/INPUTS-2024.tar.gz
-    tar xzf INPUTS-2024.tar.gz
+  if [ ! -f "INPUTS-2025.tar.gz" ]; then
+    wget --progress=dot:mega https://mcc.lip6.fr/2025/archives/INPUTS-2025.tar.gz
+  fi
+  mkdir -p INPUTS
+	tar xzf INPUTS-2025.tar.gz -C INPUTS --strip-components=1 --no-xattrs --warning=no-unknown-keyword
 fi
 export MODELDIR="$ROOT/INPUTS"
 
-pushd "$MODELDIR" 
+pushd "$MODELDIR"
 # Remove COL models
 rm *-COL-*.tgz 2>/dev/null || true
 
@@ -123,37 +133,37 @@ rm *-COL-*.tgz 2>/dev/null || true
 for i in *.tgz; do
     model_dir="${i%.tgz}"
     if [ ! -d "$model_dir" ]; then
-        tar xzf "$i"
+        tar xzf "$i" --no-xattrs --warning=no-unknown-keyword
         cd "$model_dir"
         # Clear useless formula files
-        # rm Reachability*.xml LTL*.xml UpperBounds.xml CTL*.xml        
+        # rm Reachability*.xml LTL*.xml UpperBounds.xml CTL*.xml
         # Remove unnecessary files
         rm -f *.xml *.txt
-        
+
         set +e
         # Step 1: Normalize PNML
         if [ ! -f "model.norm.pnml" ]; then
-            $PETRISPOT64 -i "$PWD/model.pnml" --normalizePNML="$PWD/model.norm.pnml"
+            "$PETRISPOT64" -i "$PWD/model.pnml" --normalizePNML="$PWD/model.norm.pnml"
             status_norm=$?
             if [ $status_norm -ne 0 ]; then
                 echo "Warning: Normalized PNML export failed in $PWD (status: $status_norm)" >&2
                 rm -f model.norm.pnml
             fi
         fi
-        
+
         # Step 2: Export matrix from normalized PNML
         if [ -f "model.norm.pnml" ] && [ ! -f "model.mtx" ]; then
-            $PETRISPOT64 -i "$PWD/model.norm.pnml" --exportAsMatrix="$PWD/model.mtx"
+            "$PETRISPOT64" -i "$PWD/model.norm.pnml" --exportAsMatrix="$PWD/model.mtx"
             status_mtx=$?
             if [ $status_mtx -ne 0 ]; then
                 echo "Warning: Matrix export failed in $PWD (status: $status_mtx)" >&2
                 rm -f model.mtx
             fi
         fi
-        
+
         # Step 3: Convert normalized PNML to GreatSPN format (.def/.net)
         if [ -f "model.norm.pnml" ] && [ ! -f "model.def" ]; then
-            $GSOL -use-pnml-ids "$PWD/model.norm.pnml" -export-greatspn "$PWD/model"
+            "$GSOL" -use-pnml-ids "$PWD/model.norm.pnml" -export-greatspn "$PWD/model"
             status_gsol=$?
             if [ $status_gsol -ne 0 ] || [ ! -f "model.def" ]; then
                 echo "Warning: GreatSPN conversion failed in $PWD (status: $status_gsol)" >&2
@@ -164,11 +174,11 @@ for i in *.tgz; do
         cd ..
     fi
 done
-popd 
+popd
 
 # --- Install Micromamba and Sage Environment ---
-mkdir -p bin
-pushd bin 
+mkdir -p "$TOOLS_DIR/bin"
+pushd "$TOOLS_DIR/bin"
 if [ ! -f "micromamba" ]; then
     wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
     mv bin/micromamba .
@@ -176,24 +186,24 @@ if [ ! -f "micromamba" ]; then
     chmod +x micromamba
 fi
 export MICROMAMBA="$PWD/micromamba"
-popd 
+popd
 
-# Set up micromamba root prefix under $ROOT
-mkdir -p "$ROOT/micromamba"
-if [ ! -d "$ROOT/micromamba/envs/sage" ]; then
-    "$MICROMAMBA" create -r "$ROOT/micromamba" -n sage -c conda-forge sage -y
+# Set up micromamba root prefix under $TOOLS_DIR
+mkdir -p "$TOOLS_DIR/micromamba"
+if [ ! -d "$TOOLS_DIR/micromamba/envs/sage" ]; then
+    "$MICROMAMBA" create -r "$TOOLS_DIR/micromamba" -n sage -c conda-forge sage -y
 fi
-export SAGE_ENV="$ROOT/micromamba/envs/sage"
+export SAGE_ENV="$TOOLS_DIR/micromamba/envs/sage"
 
 # --- Install PetriSage ---
-mkdir -p petrisage
-pushd petrisage 
+mkdir -p "$TOOLS_DIR/petrisage"
+pushd "$TOOLS_DIR/petrisage"
 if [ ! -f "petrisage.py" ]; then
     wget https://github.com/yanntm/PetriSpot/raw/refs/heads/master/PetriSage/petrisage.py
     chmod +x petrisage.py
 fi
 export PETRISAGE="$PWD/petrisage.py"
-popd 
+popd
 
 # --- Write Configuration File ---
 cat > config.sh <<EOF
@@ -215,6 +225,7 @@ export PYTHONPATH="$LIB_DIR:$PYTHONPATH"
 export MICROMAMBA="$MICROMAMBA"
 export SAGE_ENV="$SAGE_ENV"
 export PETRISAGE="$PETRISAGE"
+export PATH="$TOOLS_DIR/bin:$PATH"
 EOF
 
 chmod +x config.sh
