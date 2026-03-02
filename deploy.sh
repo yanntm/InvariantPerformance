@@ -5,6 +5,11 @@
 set -e
 set -x
 
+# Versions (edit these three values only)
+TINA_VERSION="3.9.0"
+Z3_VERSION="4.16.0"
+Z3_GLIBC="2.39"
+
 ROOT=$(pwd)
 TOOLS_DIR="$ROOT/tools"
 
@@ -15,16 +20,19 @@ mkdir -p "$TOOLS_DIR"
 # Tina
 mkdir -p "$TOOLS_DIR/tina"
 pushd "$TOOLS_DIR/tina"
-if [ ! -f "tina-3.8.5-amd64-linux.tgz" ]; then
+TINA_BASE="tina-$TINA_VERSION"
+TINA_LARGE_TGZ="$TINA_BASE-large-amd64-linux.tgz"
+TINA_STD_TGZ="$TINA_BASE-amd64-linux.tgz"
+if [ ! -f "$TINA_STD_TGZ" ]; then
     # we only need the struct binary, but in regular AND large versions:
-    wget https://projects.laas.fr/tina/binaries/tina-3.8.5-large-amd64-linux.tgz
-    wget https://projects.laas.fr/tina/binaries/tina-3.8.5-amd64-linux.tgz
-    tar xvzf tina-3.8.5-large-amd64-linux.tgz tina-3.8.5/bin/struct
-    mv tina-3.8.5/bin/struct tina-3.8.5/bin/struct_large
-    tar xvzf tina-3.8.5-amd64-linux.tgz tina-3.8.5/bin/struct
+    wget "https://projects.laas.fr/tina/binaries/$TINA_LARGE_TGZ"
+    wget "https://projects.laas.fr/tina/binaries/$TINA_STD_TGZ"
+    tar xvzf "$TINA_LARGE_TGZ" "$TINA_BASE/bin/struct"
+    mv "$TINA_BASE/bin/struct" "$TINA_BASE/bin/struct_large"
+    tar xvzf "$TINA_STD_TGZ" "$TINA_BASE/bin/struct"
 fi
-export STRUCT="$PWD/tina-3.8.5/bin/struct"
-export STRUCTLARGE="$PWD/tina-3.8.5/bin/struct_large"
+export STRUCT="$PWD/$TINA_BASE/bin/struct"
+export STRUCTLARGE="$PWD/$TINA_BASE/bin/struct_large"
 popd
 
 # 4ti2
@@ -93,12 +101,14 @@ popd
 # --- Install Z3 ---
 mkdir -p "$TOOLS_DIR/z3"
 pushd "$TOOLS_DIR/z3"
+Z3_TAG="z3-$Z3_VERSION"
+Z3_ZIP="$Z3_TAG-x64-glibc-$Z3_GLIBC.zip"
 if [ ! -f "bin/libz3.so" ]; then
-    wget https://github.com/Z3Prover/z3/releases/download/z3-4.14.0/z3-4.14.0-x64-glibc-2.35.zip
-    unzip z3-4.14.0-x64-glibc-2.35.zip
-    mv z3-4.14.0-x64-glibc-2.35/* .
-    rmdir z3-4.14.0-x64-glibc-2.35
-    rm z3-4.14.0-x64-glibc-2.35.zip
+    wget "https://github.com/Z3Prover/z3/releases/download/$Z3_TAG/$Z3_ZIP"
+    unzip "$Z3_ZIP"
+    mv "$Z3_TAG-x64-glibc-$Z3_GLIBC"/* .
+    rmdir "$Z3_TAG-x64-glibc-$Z3_GLIBC"
+    rm "$Z3_ZIP"
 fi
 export Z3_DIR="$PWD"
 export LD_LIBRARY_PATH="$Z3_DIR/bin:$LD_LIBRARY_PATH"
