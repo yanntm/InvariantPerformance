@@ -7,8 +7,8 @@ set -x
 
 # Versions (edit these three values only)
 TINA_VERSION="3.9.0"
-Z3_VERSION="4.16.0"
-Z3_GLIBC="2.39"
+Z3_VERSION="4.14.0"
+Z3_GLIBC="2.35"
 
 ROOT=$(pwd)
 TOOLS_DIR="$ROOT/tools"
@@ -130,8 +130,8 @@ if [ ! -d "INPUTS" ]; then
   if [ ! -f "INPUTS-2025.tar.gz" ]; then
     wget --progress=dot:mega https://mcc.lip6.fr/2025/archives/INPUTS-2025.tar.gz
   fi
-  mkdir -p INPUTS
-	tar xzf INPUTS-2025.tar.gz -C INPUTS --strip-components=1 --no-xattrs --warning=no-unknown-keyword
+  tar xzf INPUTS-2025.tar.gz
+  mv INPUTS-2025 INPUTS
 fi
 export MODELDIR="$ROOT/INPUTS"
 
