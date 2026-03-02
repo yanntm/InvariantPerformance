@@ -11,7 +11,7 @@
 #   - the five *_MATRIX_GROUPS arrays
 #
 # All tools use identical matrix syntax and the same expander function.
-# Each group uses " | " as separator between alternatives.
+# Each group uses " | " as separator between alternatives (single-flag lines also work).
 
 set -e
 
@@ -22,19 +22,16 @@ WORKDIR="/home/ythierry/git/InvariantPerformance"
 MEMLIMIT=ANY ; # or 16G
 TIMEOUT=120 ; # in seconds
 
-MODES=(PFLOWS TFLOWS)
-#MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
+#MODES=(PFLOWS TFLOWS)
+MODES=(PFLOWS PSEMIFLOWS TFLOWS TSEMIFLOWS)
 #MODES=(PSEMIFLOWS)
 #MODES=(PSEMIFLOWS TSEMIFLOWS)
 
-TOOLS=(tina petri itstools gspn petrisage)
-#TOOLS=(tina tina4ti2)
-#TOOLS=(petri32 petri64 petri128)
-#TOOLS=(tina tina4ti2 petri64 gspn)
-#TOOLS=(petri64)
-#TOOLS=(petrisage)
+TOOLS=(tina petri)
+# TOOLS=(tina petri itstools gspn petrisage)
 
-MODEL_FILTERS=("A-B" "C-D" "E-F" "G-I" "J-L" "M-O" "P-R" "S-U" "V-Z")
+#MODEL_FILTERS=("A-B" "C-D" "E-F" "G-I" "J-L" "M-O" "P-R" "S-U" "V-Z")
+MODEL_FILTERS=("I-I")
 
 OAR_CONSTRAINTS='{(host like "tall%")}/nodes=1/core=4,walltime=12:00:00'
 #OAR_CONSTRAINTS='{(host like "big25") OR (host like "big26")}/nodes=1/core=4,walltime=12:00:00'
@@ -43,36 +40,31 @@ OAR_CONSTRAINTS='{(host like "tall%")}/nodes=1/core=4,walltime=12:00:00'
 # Each *_MATRIX_GROUPS is an array of groups.
 # Inside each group, alternatives are separated by " | "
 # '' means "no flag for this dimension"
+# Single flag per line is also supported.
 
 TINA_MATRIX_GROUPS=(
-  "@MLton fixed-heap 15G -- | @MLton max-heap 8G -- -4ti2"
-  # add your 8 new Tina variants here, one line per group if needed
+  "@MLton fixed-heap 15G -- -mp | @MLton max-heap 8G -- -4ti2 -I"    # tina w/o or with 4ti2
 )
 
 PETRI_MATRIX_GROUPS=(
-  "-32 | -64 | -128"
-  "--noSingleSignRow | ''"
-  "--loopLimit=1 | --loopLimit=500 | --loopLimit=-1"
+  "-64"                       #   "-32 | -64 | -128"
+  "--noSingleSignRow | ''"    # impacts phase 1
+  "--loopLimit=500"           #   "--loopLimit=1 | --loopLimit=500 | --loopLimit=-1"
   "--noTrivialCull | ''"
-  # "--minBasis | ''"   # uncomment to add more dimensions
+  "--useQPlusBasis"           # positive rationals
+  "--useCompression | ''"     # compression
 )
 
-ITSTOOLS_MATRIX_GROUPS=(
-  ""
-)
-
-GSPN_MATRIX_GROUPS=(
-  ""
-)
-
+ITSTOOLS_MATRIX_GROUPS=("")
+GSPN_MATRIX_GROUPS=("")
 PETRISAGE_MATRIX_GROUPS=(
   "--backend=HNF | --backend=PariKernel | --backend=SNF | --backend=Rational"
 )
 
 # ====================== SHARED MATRIX EXPANDER ======================
-
 # Expands groups into full cartesian product of flag strings.
-# Handles complex flags containing spaces by normalizing " | " separator.
+# Empty matrix always produces exactly one config (no flags).
+
 generate_combinations() {
   local -a groups=("$@")
   local -a result=("")
@@ -81,13 +73,11 @@ generate_combinations() {
     if [ -z "$group" ]; then
       continue
     fi
-    # Normalize and split on literal " | "
     local normalized="${group// | /|}"
     IFS='|' read -ra opts <<< "$normalized"
     local -a new=()
     for prev in "${result[@]}"; do
       for opt in "${opts[@]}"; do
-        # Trim whitespace from each option
         opt=$(echo "$opt" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
         if [ "$opt" != "''" ] && [ -n "$opt" ]; then
           new+=("${prev:+$prev }$opt")
@@ -99,24 +89,27 @@ generate_combinations() {
     result=("${new[@]}")
   done
 
-  # Clean leading/trailing whitespace on each final combination
   for i in "${!result[@]}"; do
     result[i]=$(echo "${result[i]}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   done
 
-  printf '%s\n' "${result[@]}"
+  if [ ${#result[@]} -eq 0 ]; then
+    echo ""
+  else
+    printf '%s\n' "${result[@]}"
+  fi
 }
 
-# ====================== CONFIG LOOKUP ======================
+# ====================== CONFIG LOOKUP (EXPLICIT CASE) ======================
+# Maps logical tool name to real tool + its matrix.
+# PetriSage warning is printed only once per run.
 
-# One-time warning flag for petrisage on unsupported modes
 PETRISAGE_WARNED=false
 
 get_configurations_for_tool() {
   local logical_tool="$1"
   local mode="$2"
 
-  # Special handling for petrisage (only allowed in flows modes)
   if [ "$logical_tool" = "petrisage" ] && [ "$mode" != "PFLOWS" ] && [ "$mode" != "TFLOWS" ]; then
     if [ "$PETRISAGE_WARNED" = false ]; then
       echo "WARNING: petrisage is only supported for PFLOWS and TFLOWS. Skipping petrisage in $mode mode."
@@ -127,18 +120,32 @@ get_configurations_for_tool() {
     return
   fi
 
-  # Dynamic matrix resolution: tina -> TINA_MATRIX_GROUPS
-  local upper_tool
-  upper_tool=$(echo "$logical_tool" | tr '[:lower:]' '[:upper:]')
-  local matrix_var="${upper_tool}_MATRIX_GROUPS"
-
-  echo "$logical_tool"
-
-  if declare -p "$matrix_var" &>/dev/null 2>&1; then
-    generate_combinations "${!matrix_var[@]}"
-  else
-    echo ""
-  fi
+  case "$logical_tool" in
+    tina)
+      echo "tina"
+      generate_combinations "${TINA_MATRIX_GROUPS[@]}"
+      ;;
+    petri)
+      echo "petri"
+      generate_combinations "${PETRI_MATRIX_GROUPS[@]}"
+      ;;
+    itstools)
+      echo "itstools"
+      generate_combinations "${ITSTOOLS_MATRIX_GROUPS[@]}"
+      ;;
+    gspn)
+      echo "gspn"
+      generate_combinations "${GSPN_MATRIX_GROUPS[@]}"
+      ;;
+    petrisage)
+      echo "petrisage"
+      generate_combinations "${PETRISAGE_MATRIX_GROUPS[@]}"
+      ;;
+    *)
+      echo "$logical_tool"
+      echo ""
+      ;;
+  esac
 }
 
 # ====================== MAIN SUBMISSION LOOP ======================
@@ -149,25 +156,24 @@ TOTAL_JOBS=0
 
 for MODE in "${MODES[@]}"; do
   for TOOL in "${TOOLS[@]}"; do
-    mapfile -t configs < <(get_configurations_for_tool "$TOOL" "$MODE")
-    real_tool="${configs[0]}"
-    unset 'configs[0]'
+    mapfile -t all_lines < <(get_configurations_for_tool "$TOOL" "$MODE")
+    real_tool="${all_lines[0]}"
+    flag_combos=("${all_lines[@]:1}")
 
-    if [ ${#configs[@]} -eq 0 ] || { [ ${#configs[@]} -eq 1 ] && [ -z "${configs[0]}" ]; }; then
-      echo "Skipping $TOOL in $MODE (no configurations)"
-      continue
+    if [ ${#flag_combos[@]} -eq 0 ]; then
+      flag_combos=("")
     fi
 
-    echo "Mode: $MODE | Tool: $TOOL -> --tool=$real_tool | ${#configs[@]} config(s)"
+    echo "Mode: $MODE | Tool: $TOOL -> --tool=$real_tool | ${#flag_combos[@]} config(s)"
 
-    for FLAGS in "${configs[@]}"; do
+    for FLAGS in "${flag_combos[@]}"; do
       for FILTER in "${MODEL_FILTERS[@]}"; do
         echo "  Submitting: filter=$FILTER${FLAGS:+ | flags='$FLAGS'}"
 
-        CMD="./run_atool.sh $MODE --tool=$real_tool --mem=$MEMLIMIT -t=$TIMEOUT -solution --model-filter=$FILTER"
+        # -solution : also compute solutions and store them.
+        CMD="./run_atool.sh $MODE --tool=$real_tool --mem=$MEMLIMIT -t=$TIMEOUT --model-filter=$FILTER"
         [ -n "$FLAGS" ] && CMD="$CMD --flags=\"$FLAGS\""
 
-        # Print the exact oarsub line before submitting
         echo "  oarsub -l \"$OAR_CONSTRAINTS\" \"cd $WORKDIR && $CMD; exit\""
 
         oarsub -l "$OAR_CONSTRAINTS" "cd $WORKDIR && $CMD; exit"
