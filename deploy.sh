@@ -44,6 +44,7 @@ if [ ! -x "4ti2int64" ]; then
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/zsolve
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/zbasis
   wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/qsolve
+  wget https://github.com/yanntm/SMPT-BinaryBuilds/raw/refs/heads/linux/rays
   chmod a+x *
 fi
 popd
